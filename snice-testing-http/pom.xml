@@ -14,17 +14,43 @@
 
   <dependencies>
 
+      <dependency>
+          <groupId>io.snice</groupId>
+          <artifactId>snice-testing-core</artifactId>
+      </dependency>
+
+      <dependency>
+          <groupId>io.snice</groupId>
+          <artifactId>snice-commons</artifactId>
+      </dependency>
+
       <!-- Test dependencies -->
       <dependency>
-          <groupId>junit</groupId>
-          <artifactId>junit</artifactId>
+          <groupId>org.junit.jupiter</groupId>
+          <artifactId>junit-jupiter-engine</artifactId>
+      </dependency>
+
+      <dependency>
+          <groupId>org.hamcrest</groupId>
+          <artifactId>hamcrest</artifactId>
           <scope>test</scope>
       </dependency>
 
       <dependency>
           <groupId>org.mockito</groupId>
-          <artifactId>mockito-all</artifactId>
+          <artifactId>mockito-core</artifactId>
           <scope>test</scope>
+      </dependency>
+
+      <dependency>
+          <groupId>org.mockito</groupId>
+          <artifactId>mockito-junit-jupiter</artifactId>
+          <scope>test</scope>
+      </dependency>
+
+      <dependency>
+          <groupId>com.github.tomakehurst</groupId>
+          <artifactId>wiremock-jre8</artifactId>
       </dependency>
   </dependencies>
 
