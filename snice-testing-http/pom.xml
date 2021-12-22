@@ -24,6 +24,11 @@
           <artifactId>snice-commons</artifactId>
       </dependency>
 
+      <dependency>
+          <groupId>io.snice.codecs</groupId>
+          <artifactId>codec-http</artifactId>
+      </dependency>
+
       <!-- Test dependencies -->
       <dependency>
           <groupId>org.junit.jupiter</groupId>

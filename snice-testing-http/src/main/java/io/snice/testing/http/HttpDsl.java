@@ -1,7 +1,11 @@
 package io.snice.testing.http;
 
 
-import io.snice.testing.core.expression.Expression;
+import io.snice.testing.core.SniceConfig;
+import io.snice.testing.core.action.ActionBuilder;
+import io.snice.testing.http.action.HttpRequestActionBuilder;
+import io.snice.testing.http.protocol.HttpProtocol;
+import io.snice.testing.http.protocol.HttpProtocol.HttpProtocolBuilder;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -23,16 +27,18 @@ public class HttpDsl {
         // No instantiation of this class
     }
 
+    public static HttpProtocolBuilder http(final SniceConfig configuration) {
+        // TODO: how do you turn the SniceConfig into a http config?
+        final var httpConfig = new HttpConfig();
+        return HttpProtocol.of(httpConfig);
+    }
+
     public static HttpRequestBuilder http(final String requestName) {
         ensureNotEmpty(requestName, "The name of the HTTP request cannot be empty");
-        return new DefaultHttpRequestBuilder(Expression.of(requestName));
+        return new DefaultHttpRequestBuilder(requestName);
     }
 
-    static record DefaultHttpProtocol(URL baseUrl) implements HttpProtocol {
-
-    }
-
-    static record DefaultHttpRequestDef(Expression requestName,
+    static record DefaultHttpRequestDef(String requestName,
                                         String method,
                                         Optional<URL> baseUrl,
                                         Map<String, String> headers) implements HttpRequestDef {
@@ -58,11 +64,11 @@ public class HttpDsl {
          */
         private final Map<String, Object> values;
 
-        private DefaultHttpRequestBuilder(final Expression requestName) {
+        private DefaultHttpRequestBuilder(final String requestName) {
             this(createDefaultValues(requestName));
         }
 
-        private static Map<String, Object> createDefaultValues(final Expression requestName) {
+        private static Map<String, Object> createDefaultValues(final String requestName) {
             final var values = new HashMap<String, Object>();
             values.put(REQUEST_NAME_KEY, requestName);
             values.put(HEADERS_KEY, Collections.unmodifiableMap(new HashMap<String, String>()));
@@ -133,7 +139,7 @@ public class HttpDsl {
 
         @Override
         public HttpRequestDef build(final HttpProtocol protocol) {
-            final var requestName = (Expression) values.get(REQUEST_NAME_KEY);
+            final var requestName = (String) values.get(REQUEST_NAME_KEY);
             final var baseUrl = (Optional<URL>) values.get(BASE_URL_KEY);
             final var headers = (Map<String, String>) values.get(HEADERS_KEY);
             final var method = (String) values.get(METHOD_KEY);
@@ -152,6 +158,11 @@ public class HttpDsl {
          */
         private void ensurePath(final String uri) throws IllegalArgumentException {
             // TODO
+        }
+
+        @Override
+        public ActionBuilder toActionBuilder() {
+            return new HttpRequestActionBuilder(this);
         }
     }
 }

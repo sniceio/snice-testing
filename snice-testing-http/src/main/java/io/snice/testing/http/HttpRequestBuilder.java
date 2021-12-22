@@ -1,5 +1,8 @@
 package io.snice.testing.http;
 
+import io.snice.testing.core.MessageBuilder;
+import io.snice.testing.http.protocol.HttpProtocol;
+
 /**
  * A builder for specifying how to construct an HTTP request. The builder itself is immutable, which
  * means everytime a new value is added to the builder, a new instance is created. This allows for
@@ -12,12 +15,12 @@ package io.snice.testing.http;
  * <p>
  * TODO: add examples
  */
-public interface HttpRequestBuilder {
+public interface HttpRequestBuilder extends MessageBuilder {
 
     /**
      * Specify the base URL for built off of this {@link HttpRequestBuilder}.
      * <p>
-     * If you do not specify the base URL, then the base URL configured on the {@link HttpProtocolBuilder}
+     * If you do not specify the base URL, then the base URL configured on the {@link HttpProtocol.HttpProtocolBuilder}
      * will be used. If neither have been specified and a FQDN has not been given when specifying which
      * HTTP method to use (so e.g. {@link #get(String)} or {@link #post(String)}, then an exception will
      * be thrown when the test is about to execute and it will fail.

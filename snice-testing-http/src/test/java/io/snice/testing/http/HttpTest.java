@@ -1,5 +1,6 @@
 package io.snice.testing.http;
 
+import io.snice.testing.http.protocol.HttpProtocol;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
