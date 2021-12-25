@@ -1,23 +1,25 @@
 package io.snice.testing.http.codec;
 
-import io.snice.codecs.codec.http.HttpHeader;
 import io.snice.codecs.codec.http.HttpMethod;
 
 import java.net.URI;
+import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
-import java.util.List;
-import java.util.Optional;
 
 import static io.snice.preconditions.PreConditions.assertNotNull;
 
-public final class NioHttpRequest extends io.snice.codecs.codec.http.HttpRequest {
+public final class JavaNetHttpRequest extends JavaNetHttpMessage implements io.snice.codecs.codec.http.HttpRequest {
 
     private final HttpRequest req;
 
-    private NioHttpRequest(final HttpRequest req) {
+    private JavaNetHttpRequest(final HttpRequest req) {
         this.req = req;
     }
 
+    @Override
+    protected HttpHeaders internalHeaders() {
+        return req.headers();
+    }
 
     public static Builder<io.snice.codecs.codec.http.HttpRequest> createRequest(final HttpMethod method, final URI target) {
         assertNotNull(method);
@@ -33,21 +35,6 @@ public final class NioHttpRequest extends io.snice.codecs.codec.http.HttpRequest
     @Override
     public URI uri() {
         return req.uri();
-    }
-
-    @Override
-    public <T> Optional<HttpHeader<T>> header(final String name) {
-        return NioHttpHelper.header(req.headers(), name);
-    }
-
-    @Override
-    public <T> List<HttpHeader<T>> headers(final String name) {
-        return NioHttpHelper.headers(req.headers(), name);
-    }
-
-    @Override
-    public List<HttpHeader<?>> headers() {
-        return NioHttpHelper.headers(req.headers());
     }
 
     private static class HttpRequestBuilder extends NioHttpBuilder<io.snice.codecs.codec.http.HttpRequest> {
@@ -67,7 +54,7 @@ public final class NioHttpRequest extends io.snice.codecs.codec.http.HttpRequest
 
         @Override
         public io.snice.codecs.codec.http.HttpRequest build() {
-            return new NioHttpRequest(builder.build());
+            return new JavaNetHttpRequest(builder.build());
         }
 
     }

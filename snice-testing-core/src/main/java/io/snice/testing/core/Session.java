@@ -1,15 +1,60 @@
 package io.snice.testing.core;
 
+import java.util.Map;
 import java.util.Optional;
 
-public interface Session {
+import static io.snice.preconditions.PreConditions.assertNotEmpty;
+import static io.snice.preconditions.PreConditions.assertNotNull;
+
+public record Session(String name,
+                      Status status,
+                      Map<String, Object> attributes) {
+
+
+    public Session {
+        assertNotEmpty(name);
+        assertNotNull(status);
+        assertNotNull(attributes);
+    }
+
+    public Session(final String name) {
+        this(name, Status.OK, Map.of());
+    }
+
+    public boolean isFailed() {
+        return status() == Status.KO;
+    }
+
+    public boolean isSucceeded() {
+        return status() == Status.OK;
+    }
 
     /**
-     * The name of the current {@link io.snice.testing.core.scenario.Scenario}
+     * Mark the session as not OK.
+     *
+     * @return a new instance of {@link Session} where the status has been set to not ok
      */
-    String name();
+    public Session markAsFailed() {
+        if (isFailed()) {
+            return this;
+        }
 
-    Status status();
+        return new Session(name, Status.KO, attributes);
+    }
+
+    /**
+     * Mark the session as OK.
+     *
+     * @return a new instance of {@link Session} where the status has been set to ok
+     */
+    public Session markAsSucceeded() {
+        if (isSucceeded()) {
+            return this;
+        }
+
+        return new Session(name, Status.OK, attributes);
+    }
+
 
     /**
      * Retrieve a given attribute based on the name under which it was stored.
@@ -18,11 +63,12 @@ public interface Session {
      * @return an {@link Optional} containing the value of the attribute if it exists, otherwise
      * an empty {@link Optional} will be returned.
      */
-    Optional<Object> attributes(String name);
+    public Optional<Object> attributes(final String name) {
+        return Optional.ofNullable(attributes.get(name));
+    }
 
     enum Status {
         OK, KO;
     }
-
 
 }

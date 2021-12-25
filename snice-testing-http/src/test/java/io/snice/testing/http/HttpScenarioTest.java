@@ -18,8 +18,7 @@ public class HttpScenarioTest {
 
         final var port = 8000;
         final var http = http(config)
-                .baseUrl("http://localhost:" + port)
-                .build();
+                .baseUrl("http://localhost:" + port);
 
         final var simpleHttpGet = http("GET Something").get("/hello").asJson();
         final var scenario = scenario("Simple HTTP GET")

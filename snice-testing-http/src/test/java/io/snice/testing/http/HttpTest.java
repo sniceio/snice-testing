@@ -33,10 +33,10 @@ public class HttpTest {
         final var http2 = http1.get("hello");
         final var http3 = http2.asJson();
 
-        final var def1 = http1.build(httpProtocol);
-        final var def2 = http2.build(httpProtocol);
-        final var def3 = http3.build(httpProtocol);
-        final var def4 = http2.baseUrl("http://192.168.100.100").build(httpProtocol);
+        final var def1 = http1.build();
+        final var def2 = http2.build();
+        final var def3 = http3.build();
+        final var def4 = http2.baseUrl("http://192.168.100.100").build();
 
         final var expectedBaseUrl = new URL(baseUrl);
         ensureUrl(def1, expectedBaseUrl);

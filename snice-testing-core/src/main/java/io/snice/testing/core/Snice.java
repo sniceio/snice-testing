@@ -61,15 +61,6 @@ public final class Snice {
         }
     }
 
-    private static record DefaultSession(String name, Status status,
-                                         Map<String, Object> attributes) implements Session {
-
-        @Override
-        public Optional<Object> attributes(final String name) {
-            return Optional.ofNullable(attributes.get(name));
-        }
-    }
-
     private Snice run() {
         // TODO: will turn it all into a Scenario actor of sorts and each Scenario
         // TODO: will be built up as an FSM
@@ -84,7 +75,7 @@ public final class Snice {
             currentAction = scenario.actions().get(i).build(ctx, currentAction);
         }
 
-        final var session = new DefaultSession(scenario.name(), Session.Status.OK, Map.of());
+        final var session = new Session(scenario.name());
 
         currentAction.execute(session);
         try {

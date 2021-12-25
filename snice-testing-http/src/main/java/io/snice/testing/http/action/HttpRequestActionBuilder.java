@@ -17,7 +17,7 @@ public record HttpRequestActionBuilder(HttpRequestBuilder builder) implements Ac
     @Override
     public Action build(final ScenarioContex ctx, final Action next) {
         final var protocol = (HttpProtocol) ctx.registry().protocol(HttpProtocol.httpProtocolKey).orElseThrow(() -> new IllegalArgumentException("HTTP Protocol has not been configured"));
-        final var httpRequestDef = builder.build(protocol);
+        final var httpRequestDef = builder.build();
         return new HttpRequestAction(httpRequestDef.requestName(), protocol, httpRequestDef, next);
     }
 }

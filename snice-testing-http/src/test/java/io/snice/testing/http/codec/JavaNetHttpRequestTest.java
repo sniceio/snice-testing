@@ -1,6 +1,6 @@
 package io.snice.testing.http.codec;
 
-import io.snice.codecs.codec.http.HttpMessage;
+import io.snice.codecs.codec.http.HttpProvider;
 import io.snice.codecs.codec.http.HttpRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -10,11 +10,11 @@ import java.util.Optional;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-public class NioHttpRequestTest {
+public class JavaNetHttpRequestTest {
 
     @BeforeEach
     public void setup() {
-        HttpMessage.setHttProvider(new NioHttpProvider());
+        HttpProvider.setMessageFactory(new JavaNetHttpMessageFactory());
     }
 
     @Test

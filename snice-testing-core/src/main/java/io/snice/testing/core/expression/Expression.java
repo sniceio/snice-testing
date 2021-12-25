@@ -1,6 +1,5 @@
 package io.snice.testing.core.expression;
 
-import io.snice.preconditions.PreConditions;
 import io.snice.testing.core.Session;
 
 import static io.snice.preconditions.PreConditions.assertNotEmpty;
@@ -11,8 +10,16 @@ public sealed interface Expression permits Expression.DynamicExpression, Express
     static Expression of(final String expression) {
         assertNotEmpty(expression);
 
-        // TODO: assume all is static.
+        // TODO: don't assume all is static.
         return new StaticExpression(expression);
+    }
+
+    default boolean isStatic() {
+        return false;
+    }
+
+    default boolean isDynamic() {
+        return false;
     }
 
     String apply(Session s);
@@ -24,12 +31,22 @@ public sealed interface Expression permits Expression.DynamicExpression, Express
             assertNotNull(s);
             throw new RuntimeException("Not yet implemented");
         }
+
+        @Override
+        public boolean isDynamic() {
+            return true;
+        }
     }
 
     final record StaticExpression(String value) implements Expression {
         @Override
         public String apply(final Session s) {
             return value;
+        }
+
+        @Override
+        public boolean isStatic() {
+            return true;
         }
     }
 }
