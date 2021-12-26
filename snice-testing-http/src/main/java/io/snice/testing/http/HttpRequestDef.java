@@ -48,6 +48,9 @@ public record HttpRequestDef(String requestName,
      * will be used as the target. Also, any of the components may contain a
      * dynamic {@link Expression} which will be resolved by looking up the
      * corresponding expression within the given {@link Session}.
+     * <p>
+     * TODO: return a proper Error object instead. We can then accumulate errors along the way if
+     * TODO: the scenario builder wants to make use of them somehow. Or do we actually bail out?
      *
      * @return
      */

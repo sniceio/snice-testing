@@ -16,6 +16,13 @@ public final class JavaNetHttpRequest extends JavaNetHttpMessage implements io.s
         this.req = req;
     }
 
+    /**
+     * Return the actual http request, which is the one we'll be sending off... This is an internal API only
+     */
+    public HttpRequest javaNetHttpRequest() {
+        return req;
+    }
+
     @Override
     protected HttpHeaders internalHeaders() {
         return req.headers();

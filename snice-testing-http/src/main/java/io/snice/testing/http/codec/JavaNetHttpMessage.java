@@ -13,7 +13,6 @@ import java.util.stream.Collectors;
 
 public abstract class JavaNetHttpMessage implements HttpMessage {
 
-
     @Override
     public <T> Optional<HttpHeader<T>> header(final String name) {
         return internalHeaders().firstValue(name).map(v -> new NioHttpHeader(name, v));

@@ -1,68 +1,104 @@
 package io.snice.testing.http.action;
 
+import io.snice.codecs.codec.http.HttpMessage;
+import io.snice.codecs.codec.http.HttpMessageFactory;
+import io.snice.codecs.codec.http.HttpMethod;
+import io.snice.codecs.codec.http.HttpProvider;
+import io.snice.codecs.codec.http.HttpRequest;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.action.Action;
-import io.snice.testing.http.HttpRequestDef;
-import io.snice.testing.http.protocol.HttpProtocol;
+import io.snice.testing.http.TestBase;
+import io.snice.testing.http.protocol.HttpTransaction;
+import io.snice.testing.http.response.ResponseProcessor;
+import io.snice.testing.http.stack.HttpStack;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.net.MalformedURLException;
+import java.net.URI;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.mockito.Mockito.mock;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class HttpRequestActionTest {
+class HttpRequestActionTest extends TestBase {
 
-    @ParameterizedTest
-    @CsvSource({", ", "hello, http://nisse.com"})
-    public void testCreateTargetURL(final String protocolBaseUrl, final String httpDefBaseUrl) throws Exception {
-        final HttpProtocol protocol = mockHttpProtocol(protocolBaseUrl);
-        final HttpRequestDef def = mockRequestDef(httpDefBaseUrl);
-        final TestAction next = new TestAction();
+    @Captor
+    private ArgumentCaptor<Session> sessionCaptor;
 
-        final var action = new HttpRequestAction("Test", protocol, def, next);
+    @Mock
+    private HttpMessageFactory messageFactory;
 
-        final var session = new Session("Testing");
+    @Mock
+    private HttpMessage.Builder builder;
 
-        action.execute(session);
+    @Mock
+    private HttpStack stack;
 
-        assertThat(next.session.isFailed(), is(true));
-        assertThat(next.session != session, is(true));
-        assertThat(session.isSucceeded(), is(true));
+    @Mock
+    private HttpTransaction.Builder transactionBuilder;
+
+    @Mock
+    private HttpRequest httpRequest;
+
+    @BeforeEach
+    public void setup() {
+        HttpProvider.setMessageFactory(messageFactory);
     }
 
-    private static class TestAction implements Action {
+    /**
+     * If the user specifies a {@link io.snice.testing.http.HttpRequestDef} where the target URL is
+     * unresolvable, we need to error out with a failed session. This tests that.
+     */
+    @Test
+    public void testRequestActionButNoTargetUri(@Mock final Action next) throws Exception {
+        final var action = new HttpRequestAction("Test", someHttpProtocol(), someHttpRequest(), next);
+        action.execute(new Session("Testing"));
 
-        Session session;
-
-        @Override
-        public String name() {
-            return null;
-        }
-
-        @Override
-        public void execute(final Session session) {
-            this.session = session;
-        }
+        verify(next).execute(sessionCaptor.capture());
+        assertThat(sessionCaptor.getValue().isFailed(), is(true));
     }
 
-    private static HttpProtocol mockHttpProtocol(final String uri) throws MalformedURLException {
-        final HttpProtocol protocol = mock(HttpProtocol.class);
-        // final Optional<URL> uriMaybe = uri == null ? Optional.empty() : Optional.of(new
-        // when(protocol.baseUrl()).thenReturn(uriMaybe);
-        return protocol;
+    /**
+     * Validates the regular flow where we are able to correctly create a new http request, create a new
+     * http transaction and then kick off that transaction. At this point, there should be no interactions
+     * with the next {@link Action} since that won't happen until we get back a response, which
+     * will be processed by the {@link ResponseProcessor}, which we'll test separately.
+     */
+    @Test
+    public void testSendHttpRequest(@Mock final Action next) throws Exception {
+        // Note that if there is a bug and we don't end up with a GET and a URI as given below,
+        // it won't match and we'll blow up on a NPE.
+        when(messageFactory.createRequest(HttpMethod.GET, new URI("http://example.com"))).thenReturn(builder);
+        when(builder.build()).thenReturn(httpRequest);
+        when(stack.newTransaction(httpRequest)).thenReturn(transactionBuilder);
+
+        final var def = someHttpRequest("http://example.com", "hello", "world");
+        final var action = new HttpRequestAction("Test", someHttpProtocol(stack), def, next);
+        action.execute(new Session("Testing"));
+
+        // check so that we build the new request properly
+        verify(builder).header("hello", "world");
+        verify(builder).build();
+        verifyNoMoreInteractions(builder);
+
+        verify(transactionBuilder).onResponse(any());
+        verify(transactionBuilder).start();
+
+        // There should be zero interactions with the next Action since that won't
+        // happen once the HTTP transaction has completed so make sure that is indeed
+        // true!!!
+        verifyNoInteractions(next);
     }
 
-    private static HttpRequestDef mockRequestDef(final String uri) throws MalformedURLException {
-        final HttpRequestDef def = mock(HttpRequestDef.class);
-        // final Optional<URL> uriMaybe = uri == null ? Optional.empty() : Optional.of(new URL(uri));
-        // when(def.baseUrl()).thenReturn(uriMaybe);
-        return def;
-    }
 
 }

@@ -1,9 +1,11 @@
 package io.snice.testing.http.protocol.jnet;
 
+import io.snice.codecs.codec.http.HttpProvider;
 import io.snice.preconditions.PreConditions;
 import io.snice.testing.core.expression.Expression;
 import io.snice.testing.core.protocol.ProtocolRegistry;
 import io.snice.testing.http.HttpConfig;
+import io.snice.testing.http.codec.JavaNetHttpMessageFactory;
 import io.snice.testing.http.protocol.HttpProtocol;
 import io.snice.testing.http.stack.jnet.JavaNetHttpStack;
 
@@ -49,6 +51,8 @@ public record JavaNetHttpProtocol(HttpConfig config,
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
             final var stack = new JavaNetHttpStack(httpClient);
+            final var messageFactory = new JavaNetHttpMessageFactory();
+            HttpProvider.setMessageFactory(messageFactory);
             return new JavaNetHttpProtocol(config, key, stack, Optional.ofNullable(baseUrl));
         }
 

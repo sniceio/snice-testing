@@ -16,9 +16,9 @@ public class HttpScenarioTest {
     public void buildHttpBasicScenario() {
         final var config = new SniceConfig();
 
-        final var port = 8000;
+        final var port = 80;
         final var http = http(config)
-                .baseUrl("http://localhost:" + port);
+                .baseUrl("http://example.com:" + port);
 
         final var simpleHttpGet = http("GET Something").get("/hello").asJson();
         final var scenario = scenario("Simple HTTP GET")

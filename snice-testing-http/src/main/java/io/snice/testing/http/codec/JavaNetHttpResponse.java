@@ -6,9 +6,16 @@ import java.net.URI;
 import java.net.http.HttpHeaders;
 import java.net.http.HttpResponse;
 
+import static io.snice.preconditions.PreConditions.assertNotNull;
+
 public final class JavaNetHttpResponse<T> extends JavaNetHttpMessage implements io.snice.codecs.codec.http.HttpResponse {
 
     private final HttpResponse<T> resp;
+
+    public static <T> JavaNetHttpResponse<T> of(final HttpResponse<T> resp) {
+        assertNotNull(resp);
+        return new JavaNetHttpResponse<>(resp);
+    }
 
     private JavaNetHttpResponse(final HttpResponse<T> resp) {
         this.resp = resp;

@@ -1,11 +1,11 @@
 package io.snice.testing.http.action;
 
 import io.snice.codecs.codec.http.HttpRequest;
-import io.snice.functional.Either;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.action.Action;
 import io.snice.testing.http.HttpRequestDef;
 import io.snice.testing.http.protocol.HttpProtocol;
+import io.snice.testing.http.response.ResponseProcessor;
 
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -19,12 +19,13 @@ public record HttpRequestAction(String name, HttpProtocol http, HttpRequestDef h
             final var newSession = uriMaybe.fold(t -> processResolveUriError(session, t), uri -> session);
             if (newSession.isSucceeded()) {
                 final var request = map(session, httpDef, uriMaybe.get());
-
-                // TODO:
-                http.stack().newTransaction(request);
+                final var transaction = http.stack().newTransaction(request);
+                final var processor = new ResponseProcessor(name, request, session, next);
+                transaction.onResponse(processor::process);
+                transaction.start();
+            } else {
+                next.execute(newSession);
             }
-
-            next.execute(newSession);
         } catch (final Throwable t) {
             throw new RuntimeException(t);
         }
@@ -32,29 +33,12 @@ public record HttpRequestAction(String name, HttpProtocol http, HttpRequestDef h
 
     private static HttpRequest map(final Session session, final HttpRequestDef def, final URL target) throws URISyntaxException {
         final var builder = HttpRequest.create(def.method(), target.toURI());
+        def.headers().entrySet().forEach(entry -> builder.header(entry.getKey(), entry.getValue().apply(session)));
         return builder.build();
     }
 
     private Session processResolveUriError(final Session session, final String errorMsg) {
         return session.markAsFailed();
-    }
-
-    /**
-     * The {@link HttpRequestDef} may contain expressions that we need to resolve
-     * in order to build up the full URI.
-     *
-     * @param session
-     */
-    private Either<Throwable, URL> resolveURI(final Session session) {
-        // TODO: would also need to figure out if the URL contains
-        // an expression.
-        /*
-        return httpDef.baseUrl().or(() -> http.baseUrl())
-                .map(base -> createUrl(base, httpDef.uri()))
-                .orElse(createUrl(null, httpDef.uri()));
-
-         */
-        return Either.left(new IllegalArgumentException("apa"));
     }
 
 }
