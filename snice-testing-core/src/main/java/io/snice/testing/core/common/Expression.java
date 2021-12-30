@@ -1,4 +1,4 @@
-package io.snice.testing.core.expression;
+package io.snice.testing.core.common;
 
 import io.snice.testing.core.Session;
 

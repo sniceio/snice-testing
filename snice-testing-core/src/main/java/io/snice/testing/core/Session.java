@@ -1,5 +1,6 @@
 package io.snice.testing.core;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -65,6 +66,12 @@ public record Session(String name,
      */
     public Optional<Object> attributes(final String name) {
         return Optional.ofNullable(attributes.get(name));
+    }
+
+    public Session attributes(final String name, final Object value) {
+        final var newAttributes = new HashMap<>(attributes);
+        newAttributes.put(name, value);
+        return new Session(name, status, newAttributes);
     }
 
     enum Status {

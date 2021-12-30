@@ -2,7 +2,7 @@ package io.snice.testing.http.protocol.jnet;
 
 import io.snice.codecs.codec.http.HttpProvider;
 import io.snice.preconditions.PreConditions;
-import io.snice.testing.core.expression.Expression;
+import io.snice.testing.core.common.Expression;
 import io.snice.testing.core.protocol.ProtocolRegistry;
 import io.snice.testing.http.HttpConfig;
 import io.snice.testing.http.codec.JavaNetHttpMessageFactory;

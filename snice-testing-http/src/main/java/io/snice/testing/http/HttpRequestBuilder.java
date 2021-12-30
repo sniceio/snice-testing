@@ -1,6 +1,8 @@
 package io.snice.testing.http;
 
+import io.snice.codecs.codec.http.HttpResponse;
 import io.snice.testing.core.MessageBuilder;
+import io.snice.testing.core.check.Check;
 import io.snice.testing.http.protocol.HttpProtocol;
 
 /**
@@ -54,6 +56,7 @@ public interface HttpRequestBuilder extends MessageBuilder {
                 header("Content-Type", "application/json");
     }
 
+    HttpRequestBuilder check(Check<HttpResponse> check);
 
     /**
      * Specify that this HTTP request is a GET and the URI to fetch.

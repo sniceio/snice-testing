@@ -1,11 +1,12 @@
 package io.snice.testing.http;
 
 import io.snice.codecs.codec.http.HttpMethod;
-import io.snice.testing.core.expression.Expression;
+import io.snice.testing.core.common.Expression;
 import io.snice.testing.http.protocol.HttpProtocol;
 import io.snice.testing.http.stack.HttpStack;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.Mockito.mock;
@@ -51,7 +52,7 @@ public class TestBase {
         for (int i = 0; i < headers.length; i += 2) {
             map.put(headers[i], Expression.of(headers[i + 1]));
         }
-        return new HttpRequestDef("Unit Testing", HttpMethod.GET, baseExp, null, map);
+        return new HttpRequestDef("Unit Testing", HttpMethod.GET, List.of(), baseExp, null, map);
     }
 
 }

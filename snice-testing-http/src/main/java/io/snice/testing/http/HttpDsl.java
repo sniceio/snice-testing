@@ -2,6 +2,7 @@ package io.snice.testing.http;
 
 
 import io.snice.testing.core.SniceConfig;
+import io.snice.testing.http.check.HttpCheckSupport;
 import io.snice.testing.http.protocol.HttpProtocol;
 import io.snice.testing.http.protocol.HttpProtocol.Builder;
 import io.snice.testing.http.stack.HttpStackConfig;
@@ -12,7 +13,7 @@ import static io.snice.preconditions.PreConditions.ensureNotEmpty;
  * Functions as a simple DSL to "kick-start" the creation of various HTTP
  * related objects, such as requests, configure the HTTP stack etc.
  */
-public class HttpDsl {
+public class HttpDsl extends HttpCheckSupport {
 
     private HttpDsl() {
         // No instantiation of this class

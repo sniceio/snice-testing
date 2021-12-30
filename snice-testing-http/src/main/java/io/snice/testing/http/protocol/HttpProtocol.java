@@ -1,6 +1,6 @@
 package io.snice.testing.http.protocol;
 
-import io.snice.testing.core.expression.Expression;
+import io.snice.testing.core.common.Expression;
 import io.snice.testing.core.protocol.Protocol;
 import io.snice.testing.core.protocol.ProtocolRegistry;
 import io.snice.testing.http.HttpConfig;

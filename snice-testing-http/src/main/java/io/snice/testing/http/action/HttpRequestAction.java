@@ -10,7 +10,10 @@ import io.snice.testing.http.response.ResponseProcessor;
 import java.net.URISyntaxException;
 import java.net.URL;
 
-public record HttpRequestAction(String name, HttpProtocol http, HttpRequestDef httpDef, Action next) implements Action {
+public record HttpRequestAction(String name,
+                                HttpProtocol http,
+                                HttpRequestDef httpDef,
+                                Action next) implements Action {
 
     @Override
     public void execute(final Session session) {
@@ -20,7 +23,7 @@ public record HttpRequestAction(String name, HttpProtocol http, HttpRequestDef h
             if (newSession.isSucceeded()) {
                 final var request = map(session, httpDef, uriMaybe.get());
                 final var transaction = http.stack().newTransaction(request);
-                final var processor = new ResponseProcessor(name, request, session, next);
+                final var processor = new ResponseProcessor(name, request, httpDef.checks(), session, next);
                 transaction.onResponse(processor::process);
                 transaction.start();
             } else {

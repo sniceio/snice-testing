@@ -1,17 +1,21 @@
 package io.snice.testing.http;
 
 import io.snice.codecs.codec.http.HttpMethod;
+import io.snice.codecs.codec.http.HttpResponse;
 import io.snice.functional.Either;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.action.ActionBuilder;
-import io.snice.testing.core.expression.Expression;
+import io.snice.testing.core.check.Check;
+import io.snice.testing.core.common.Expression;
 import io.snice.testing.http.action.HttpRequestActionBuilder;
 import io.snice.testing.http.protocol.HttpProtocol;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -21,6 +25,7 @@ import static io.snice.preconditions.PreConditions.assertNotNull;
 
 public record HttpRequestDef(String requestName,
                              HttpMethod method,
+                             List<Check<HttpResponse>> checks,
                              Optional<Expression> baseUrl,
                              Optional<Expression> uri,
                              Map<String, Expression> headers) {
@@ -34,7 +39,7 @@ public record HttpRequestDef(String requestName,
     }
 
     public HttpRequestDef(final String requestName, final HttpMethod method) {
-        this(requestName, method, null, null, null);
+        this(requestName, method, List.of(), null, null, null);
     }
 
     public static HttpRequestBuilder of(final String requestName) {
@@ -103,6 +108,8 @@ public record HttpRequestDef(String requestName,
 
         private static final String METHOD_KEY = "METHOD";
 
+        private static final String CHECKS_KEY = "CHECKS";
+
         /**
          * There is no good way for incremental building up an immutable object in java that doesn't
          * involve calling a constructor over and over with a massive argument list. Scala has
@@ -120,6 +127,7 @@ public record HttpRequestDef(String requestName,
             values.put(REQUEST_NAME_KEY, requestName);
             values.put(HEADERS_KEY, Collections.unmodifiableMap(new HashMap<String, Expression>()));
             values.put(METHOD_KEY, "GET");
+            values.put(CHECKS_KEY, List.of());
             return values;
         }
 
@@ -151,6 +159,13 @@ public record HttpRequestDef(String requestName,
             return extend(HEADERS_KEY, extendMap(headers, name, value));
         }
 
+        private DefaultHttpRequestBuilder extendChecks(final Check<HttpResponse> check) {
+            final var checks = (List<Check<HttpResponse>>) values.get(CHECKS_KEY);
+            final var newChecks = new ArrayList<>(checks);
+            newChecks.add(check);
+            return extend(CHECKS_KEY, Collections.unmodifiableList(newChecks));
+        }
+
         private DefaultHttpRequestBuilder extend(final String key, final Object value) {
             final var newValues = new HashMap<>(values);
             newValues.put(key, value);
@@ -168,6 +183,12 @@ public record HttpRequestDef(String requestName,
             assertNotEmpty(name);
             assertNotEmpty(value);
             return extendHeaders(name, value);
+        }
+
+        @Override
+        public HttpRequestBuilder check(final Check<HttpResponse> check) {
+            assertNotNull(check);
+            return extendChecks(check);
         }
 
         @Override
@@ -199,11 +220,12 @@ public record HttpRequestDef(String requestName,
             final var headers = (Map<String, Expression>) values.get(HEADERS_KEY);
             final var target = (Expression) values.get(PATH_KEY);
             final var method = HttpMethod.valueOf(((String) values.get(METHOD_KEY)).toUpperCase());
+            final var checks = (List<Check<HttpResponse>>) values.get(CHECKS_KEY);
 
             assertNotNull(target, "You must specify the target of the request");
             assertNotNull(method, "You must specify the method of the request");
 
-            return new HttpRequestDef(requestName, method, Optional.ofNullable(baseUrl), Optional.ofNullable(target), headers);
+            return new HttpRequestDef(requestName, method, checks, Optional.ofNullable(baseUrl), Optional.ofNullable(target), headers);
         }
 
         @Override

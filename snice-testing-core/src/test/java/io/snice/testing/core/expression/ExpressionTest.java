@@ -1,6 +1,7 @@
 package io.snice.testing.core.expression;
 
 import io.snice.testing.core.Session;
+import io.snice.testing.core.common.Expression;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
