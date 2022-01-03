@@ -24,11 +24,16 @@ public class HttpScenarioTest {
         final var simpleHttpGet = http("GET Something")
                 .get("/hello")
                 .asJson()
-                .check(status().is(200).saveAs("hello_status"))
-                .check(status().is(300).saveAs("hello_300"));
+                // .latch("hello_latch").countDown() // to use a latch
+                .check(status().is(404).saveAs("hello_status"));
 
         final var scenario = scenario("Simple HTTP GET")
-                .execute(simpleHttpGet);
+                .execute(simpleHttpGet)
+                // .latch("hello_latch").await() // to wait for a latch to open.
+                .execute(session -> {
+                    System.err.println("Session variable: " + session.attributes("hello_status"));
+                    return session.attributes("ops", "oh man").markAsFailed();
+                });
 
 
         final var snice = Snice.run(scenario)

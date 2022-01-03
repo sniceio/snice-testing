@@ -1,15 +1,20 @@
 package io.snice.testing.core.scenario;
 
+import io.snice.functional.Either;
 import io.snice.testing.core.MessageBuilder;
+import io.snice.testing.core.Session;
 import io.snice.testing.core.action.Action;
 import io.snice.testing.core.action.ActionBuilder;
-import io.snice.testing.core.protocol.Protocol;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static io.snice.preconditions.PreConditions.assertNotEmpty;
+import static io.snice.preconditions.PreConditions.assertNotNull;
 
 public record Scenario(String name, List<ActionBuilder> actions) {
 
@@ -23,6 +28,55 @@ public record Scenario(String name, List<ActionBuilder> actions) {
         this.actions = actions == null ? List.of() : Collections.unmodifiableList(new ArrayList<>(actions));
     }
 
+    public ParallelExecution.Builder executeInParallel() {
+        return new ParallelExecution.Builder(List.of());
+    }
+
+    public Scenario execute(final Function<Session, Session> f) {
+        assertNotNull(f);
+        return execute(new GenericSessionActionBuilder(f));
+    }
+
+    public static class ParallelExecution implements ActionBuilder {
+
+        private final List<ActionBuilder> actions;
+
+        private ParallelExecution(final List<ActionBuilder> actions) {
+            this.actions = actions;
+        }
+
+        @Override
+        public Action build(final ScenarioContex ctx, final Action next) {
+            return null;
+        }
+
+        public static class Builder {
+            private final List<ActionBuilder> actions;
+
+            private Builder(final List<ActionBuilder> actions) {
+                this.actions = actions;
+            }
+
+            public Builder execute(final ActionBuilder b) {
+                assertNotNull(b);
+
+                final var extended = new ArrayList<>(actions);
+                extended.add(b);
+                return new Builder(extended);
+            }
+
+            public Builder execute(final MessageBuilder b) {
+                assertNotNull(b);
+                return execute(new ActionBuilderMessageWrapper(b));
+            }
+
+            public Builder execute(final Function<Session, Session> f) {
+                assertNotNull(f);
+                return execute(new GenericSessionActionBuilder(f));
+            }
+        }
+    }
+
     public Scenario execute(final ActionBuilder action) {
         // this is annoying because we will once again copy the entire list in the
         // constructor of the Scenario. Java really needs a proper immutable list and not the
@@ -32,8 +86,59 @@ public record Scenario(String name, List<ActionBuilder> actions) {
         return new Scenario(name, extended);
     }
 
-    public <T extends Protocol> Scenario execute(final MessageBuilder message) {
+    public <T> Scenario execute(final T... maybe) {
+        if (maybe == null || maybe.length == 0) {
+            return this;
+        }
+
+        final var eitherActions = Arrays.stream(maybe).map(object -> {
+            if (object instanceof Function) {
+                System.err.println("yeah, function");
+                return Either.right((Function) object);
+            } else if (object instanceof MessageBuilder) {
+                System.err.println("yeah, messageBuilder");
+                return Either.right(object);
+            } else if (object instanceof ActionBuilder) {
+                System.err.println("yeah, ActionBuilder");
+                return Either.right(object);
+            }
+            return Either.left("Unknown object type " + object.getClass().getName());
+        }).collect(Collectors.toList());
+
+        eitherActions.stream().filter(Either::isLeft).findAny().ifPresent(error -> {
+            throw new IllegalArgumentException((String) error.getLeft());
+        });
+
+        System.err.println(eitherActions);
+
+        return this;
+    }
+
+    public Scenario execute(final MessageBuilder message) {
         return execute(new ActionBuilderMessageWrapper(message));
+    }
+
+    private static record GenericSessionActionBuilder(Function<Session, Session> f) implements ActionBuilder {
+
+        @Override
+        public Action build(final ScenarioContex ctx, final Action next) {
+            return new GenericSessionAction("generic-exec", f, next);
+        }
+    }
+
+    private static record GenericSessionAction(String name,
+                                               Function<Session, Session> f,
+                                               Action next) implements Action {
+
+        @Override
+        public void execute(final Session session) {
+            try {
+                next.execute(f.apply(session));
+            } catch (final Throwable t) {
+                // TODO: what to do with the exception?
+                next.execute(session.markAsFailed());
+            }
+        }
     }
 
     private static record ActionBuilderMessageWrapper(MessageBuilder message) implements ActionBuilder {
