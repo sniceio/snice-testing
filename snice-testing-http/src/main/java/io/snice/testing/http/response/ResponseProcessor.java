@@ -17,7 +17,6 @@ public record ResponseProcessor(String name,
 
     public void process(final HttpTransaction transaction, final HttpResponse response) {
         // TODO: now I need to check if there are any checks etc..
-        System.err.println("Processing the response: " + response);
 
         final var result = Check.check(response, session, checks);
         result.left().forEach(failure -> {

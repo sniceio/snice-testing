@@ -1,6 +1,10 @@
 package io.snice.testing.core;
 
+import io.snice.testing.core.check.CheckResult;
+
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -9,7 +13,8 @@ import static io.snice.preconditions.PreConditions.assertNotNull;
 
 public record Session(String name,
                       Status status,
-                      Map<String, Object> attributes) {
+                      Map<String, Object> attributes,
+                      List<CheckResult<?, ?>> checkResults) {
 
 
     public Session {
@@ -19,7 +24,7 @@ public record Session(String name,
     }
 
     public Session(final String name) {
-        this(name, Status.OK, Map.of());
+        this(name, Status.OK, Map.of(), List.of());
     }
 
     public boolean isFailed() {
@@ -40,7 +45,7 @@ public record Session(String name,
             return this;
         }
 
-        return new Session(name, Status.KO, attributes);
+        return new Session(name, Status.KO, attributes, checkResults);
     }
 
     /**
@@ -53,7 +58,7 @@ public record Session(String name,
             return this;
         }
 
-        return new Session(name, Status.OK, attributes);
+        return new Session(name, Status.OK, attributes, checkResults);
     }
 
 
@@ -69,9 +74,27 @@ public record Session(String name,
     }
 
     public Session attributes(final String name, final Object value) {
+        return new Session(name, status, extendAttributes(name, value), checkResults);
+    }
+
+    private Map<String, Object> extendAttributes(final String name, final Object value) {
         final var newAttributes = new HashMap<>(attributes);
         newAttributes.put(name, value);
-        return new Session(name, status, newAttributes);
+        return newAttributes;
+    }
+
+    public Session processCheckResult(final CheckResult<?, ?> result) {
+        assertNotNull(result);
+        final var newCheckResults = new ArrayList<>(checkResults);
+        newCheckResults.add(result);
+
+        final var newAttributes =
+                result.isSuccess() && result.saveAs().isPresent() && result.extractedValue().isPresent() ?
+                        extendAttributes(result.saveAs().get(), result.extractedValue().get()) :
+                        attributes;
+
+        final var newStatus = result.isFailure() ? Status.KO : status;
+        return new Session(name, newStatus, newAttributes, newCheckResults);
     }
 
     enum Status {

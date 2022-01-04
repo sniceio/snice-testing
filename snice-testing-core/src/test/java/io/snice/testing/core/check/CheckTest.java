@@ -1,7 +1,7 @@
 package io.snice.testing.core.check;
 
 import io.snice.testing.core.Session;
-import io.snice.testing.core.common.Validation;
+import io.snice.testing.core.common.Pair;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -12,6 +12,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static java.util.Optional.empty;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -27,19 +28,22 @@ class CheckTest {
     @ValueSource(ints = {0, 1, 2, 3, 10})
     public void testCheckAllHappy(final int count) {
         final var checks = generateChecks(count);
-        final var result = Check.check("hello world", new Session("my session"), checks);
-        assertThat(result.left().isEmpty(), is(true));
-        assertThat(result.right().attributes().entrySet().size(), is(count));
-        ensureAttributesCorrect(result.right(), count);
+        final var session = Check.check("hello world", new Session("my session"), checks);
+        final var counts = countSuccessVsFailures(session);
+        assertThat(counts.left(), is(0));
+        assertThat(counts.right(), is(count));
+        ensureAttributesCorrect(session, count);
     }
 
     @ParameterizedTest
     @ValueSource(ints = {0, 1, 2, 3, 10})
     public void testCheckAllHappyButNotSavedAs(final int count) {
         final var checks = generateChecks(false, count);
-        final var result = Check.check("hello world", new Session("my session"), checks);
-        assertThat(result.left().isEmpty(), is(true));
-        assertThat(result.right().attributes().isEmpty(), is(true));
+        final var session = Check.check("hello world", new Session("my session"), checks);
+        final var counts = countSuccessVsFailures(session);
+        assertThat(counts.left(), is(0));
+        assertThat(counts.right(), is(count));
+        assertThat(session.attributes().isEmpty(), is(true));
     }
 
     /**
@@ -50,10 +54,11 @@ class CheckTest {
     public void testCheckAllFailures(final int count) {
         final var failedIndeces = range(0, count);
         final var checks = generateChecks(count, failedIndeces);
-        final var result = Check.check("hello world", new Session("my session"), checks);
-        assertThat(result.left().size(), is(count)); // failed
-        assertThat(result.right().attributes().entrySet().size(), is(0)); // no attributes because all failed
-        ensureAttributesCorrect(result.right(), 0);
+        final var session = Check.check("hello world", new Session("my session"), checks);
+        final var counts = countSuccessVsFailures(session);
+        assertThat(counts.left(), is(count));
+        assertThat(counts.right(), is(0));
+        ensureAttributesCorrect(session, 0);
     }
 
     /**
@@ -69,17 +74,24 @@ class CheckTest {
         final var failedIndexes = oddOrEven(true, 0, count);
 
         final var checks = generateChecks(count, failedIndexes);
-        final var result = Check.check("hello world", new Session("my session"), checks);
-        assertThat(result.left().size(), is(fails));
-        assertThat(result.right().attributes().entrySet().size(), is(succeeds));
+        final var session = Check.check("hello world", new Session("my session"), checks);
+        final var counts = countSuccessVsFailures(session);
+        assertThat(counts.left(), is(fails));
+        assertThat(counts.right(), is(succeeds));
 
         // these are all the indexes that should have been successful and as such,
         // should exist and saved in the session.
         final var succeededIndexes = oddOrEven(false, 0, count);
         for (int i = 0; i < succeededIndexes.length; ++i) {
             final int index = succeededIndexes[i];
-            assertThat(result.right().attributes("name-" + index).get(), is("value-" + index));
+            assertThat(session.attributes("name-" + index).get(), is("value-" + index));
         }
+    }
+
+    private Pair<Integer, Integer> countSuccessVsFailures(final Session session) {
+        final long failures = session.checkResults().stream().filter(CheckResult::isFailure).count();
+        final long success = session.checkResults().size() - failures;
+        return new Pair<>((int) failures, (int) success);
     }
 
     private int[] oddOrEven(final boolean isOdd, final int start, final int stop) {
@@ -122,10 +134,10 @@ class CheckTest {
         final var checks = new ArrayList<Check<String>>();
         for (int i = 0; i < count; ++i) {
             final Check<String> check = mock(Check.class);
-            final Optional<String> maybeSaveAs = saveAs ? Optional.of("name-" + i) : Optional.empty();
+            final Optional<String> maybeSaveAs = saveAs ? Optional.of("name-" + i) : empty();
             final var validation = isIn(i, failureIndex) ?
-                    Validation.failure("failed-" + i) :
-                    Validation.success(new CheckResult<>(Optional.of("value-" + i), maybeSaveAs));
+                    new CheckResult(check, empty(), maybeSaveAs, Optional.of("failed-" + i)) :
+                    new CheckResult(check, Optional.of("value-" + i), maybeSaveAs, empty());
             when(check.check(any(), any())).thenReturn(validation);
             checks.add(check);
         }

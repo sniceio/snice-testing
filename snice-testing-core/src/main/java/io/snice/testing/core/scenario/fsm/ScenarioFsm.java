@@ -86,28 +86,6 @@ public class ScenarioFsm {
         }
     }
 
-    private static void onInit(final ScenarioMessage.Init init, final ScenarioFsmContext ctx, final ScenarioData data) {
-
-        // TODO: now that we have this, we need to execute one action at a time
-        // in an FSM kind of way.
-        // Also, may not need to store the Session in the data bag. It can go in the messages passed between
-        // states...
-        // And the "FinalACtion" will be replaced with a dummy "NextAction" which will just post an event
-        // back to this FSM so we progress from EXEC -> WAITING -> EXEC again (or maybe a transient state where
-        // if there are no more actions we'll automatically transition to terminated state)
-        // so kind of:
-        // INIT -> READY (transient) -> EXEC -> WAIT -> READY
-        /*
-        Action currentAction = new FinalAction("terminating");
-        final var actions = ctx.scenario().actions();
-        for (int i = actions.size() - 1; i >= 0; --i) {
-            currentAction = actions.get(i).build(ctx.scenarioContext(), currentAction);
-        }
-
-        currentAction.execute(data.session());
-         */
-    }
-
     private static record FinalAction(String name) implements Action {
 
         @Override
