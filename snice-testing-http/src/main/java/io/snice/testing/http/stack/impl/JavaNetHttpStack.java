@@ -1,4 +1,4 @@
-package io.snice.testing.http.stack.jnet;
+package io.snice.testing.http.stack.impl;
 
 import io.snice.codecs.codec.http.HttpRequest;
 import io.snice.codecs.codec.http.HttpResponse;
@@ -12,6 +12,9 @@ import java.util.function.BiConsumer;
 
 import static io.snice.preconditions.PreConditions.assertNotNull;
 
+/**
+ * Basic HTTP support, which is not really used and will be deleted soon.
+ */
 public record JavaNetHttpStack(HttpClient client) implements HttpStack {
 
     public JavaNetHttpStack {
@@ -31,11 +34,9 @@ public record JavaNetHttpStack(HttpClient client) implements HttpStack {
     }
 
     public void start() {
-        System.err.println("HTTP Stack Starting");
     }
 
     public void stop() {
-        System.err.println("HTTP Stack Stopping");
     }
 
     private static class HttpTransactionBuilder implements HttpTransaction.Builder {

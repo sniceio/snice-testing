@@ -2,8 +2,11 @@ package io.snice.testing.core.scenario.fsm;
 
 import io.hektor.fsm.Definition;
 import io.hektor.fsm.FSM;
+import io.snice.testing.core.Execution;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.action.Action;
+
+import java.util.List;
 
 import static io.snice.testing.core.scenario.fsm.ScenarioState.EXEC;
 import static io.snice.testing.core.scenario.fsm.ScenarioState.INIT;
@@ -58,39 +61,27 @@ public class ScenarioFsm {
     }
 
     private static void onNoMoreActions(final ScenarioMessage.Exec exec, final ScenarioFsmContext ctx, final ScenarioData data) {
-        ctx.processFinalResult(exec.session());
+        ctx.processFinalResult(exec.executions(), exec.session());
     }
 
     private static void onExecuteNextAction(final ScenarioMessage.Exec exec, final ScenarioFsmContext ctx, final ScenarioData data) {
-        final var nextAction = new Action() {
-
-            @Override
-            public String name() {
-                return "nextAction";
-            }
-
-            @Override
-            public void execute(final Session session) {
-                ctx.processActionResult(session);
-            }
-        };
-        final var action = data.nextAction().build(ctx.scenarioContext(), nextAction);
-
         try {
             // TODO: do we simply rely on the action always taking place on a thread pool
             // on its own?
-            action.execute(exec.session());
+            final var nextAction = new NextAction("NextAction", ctx);
+            final var action = data.nextAction().build(ctx.scenarioContext(), nextAction);
+            action.execute(exec.executions(), exec.session());
         } catch (final Throwable t) {
             // TODO: do something about it.
             t.printStackTrace();
         }
     }
 
-    private static record FinalAction(String name) implements Action {
+    private static record NextAction(String name, ScenarioFsmContext ctx) implements Action {
 
         @Override
-        public void execute(final Session session) {
-            System.err.println("The Terminating Action is being executed");
+        public void execute(final List<Execution> executions, final Session session) {
+            ctx.processActionResult(executions, session);
         }
     }
 

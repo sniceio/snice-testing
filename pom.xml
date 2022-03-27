@@ -45,6 +45,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <io.snice.commons.version>0.1.10-SNAPSHOT</io.snice.commons.version>
         <io.snice.codecs.version>0.0.10-SNAPSHOT</io.snice.codecs.version>
+        <io.snice.networking.version>0.0.10-SNAPSHOT</io.snice.networking.version>
         <logback.version>1.2.10</logback.version>
         <hektor.version>0.0.5-SNAPSHOT</hektor.version>
         <maven.compiler.release>17</maven.compiler.release>
@@ -107,6 +108,38 @@
                 <groupId>io.snice.codecs</groupId>
                 <artifactId>codec-http</artifactId>
                 <version>${io.snice.codecs.version}</version>
+                <type>jar</type>
+                <scope>compile</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>io.snice.networking</groupId>
+                <artifactId>networking-core</artifactId>
+                <version>${io.snice.networking.version}</version>
+                <type>jar</type>
+                <scope>compile</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>io.snice.networking</groupId>
+                <artifactId>networking-app</artifactId>
+                <version>${io.snice.networking.version}</version>
+                <type>jar</type>
+                <scope>compile</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>io.snice.networking</groupId>
+                <artifactId>networking-netty</artifactId>
+                <version>${io.snice.networking.version}</version>
+                <type>jar</type>
+                <scope>compile</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>io.snice.networking</groupId>
+                <artifactId>http-stack</artifactId>
+                <version>${io.snice.networking.version}</version>
                 <type>jar</type>
                 <scope>compile</scope>
             </dependency>

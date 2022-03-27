@@ -1,7 +1,7 @@
 package io.snice.testing.http;
 
-import io.snice.testing.http.stack.HttpStackConfig;
+import io.snice.networking.http.HttpAppConfig;
 
-public record HttpConfig(HttpStackConfig stackConfig) {
+public class HttpConfig extends HttpAppConfig {
 
 }

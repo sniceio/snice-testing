@@ -2,9 +2,12 @@ package io.snice.testing.core.scenario.fsm;
 
 import io.hektor.actors.fsm.FsmActorContextSupport;
 import io.hektor.fsm.Context;
+import io.snice.testing.core.Execution;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.scenario.Scenario;
 import io.snice.testing.core.scenario.ScenarioContex;
+
+import java.util.List;
 
 public interface ScenarioFsmContext extends Context, FsmActorContextSupport {
 
@@ -17,8 +20,8 @@ public interface ScenarioFsmContext extends Context, FsmActorContextSupport {
 
     ScenarioContex scenarioContext();
 
-    void processActionResult(Session session);
+    void processActionResult(List<Execution> executions, Session session);
 
-    void processFinalResult(Session session);
+    void processFinalResult(List<Execution> executions, Session session);
 
 }

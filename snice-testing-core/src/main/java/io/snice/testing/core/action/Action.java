@@ -1,6 +1,9 @@
 package io.snice.testing.core.action;
 
+import io.snice.testing.core.Execution;
 import io.snice.testing.core.Session;
+
+import java.util.List;
 
 public interface Action {
 
@@ -12,5 +15,5 @@ public interface Action {
     /**
      * Execute this action.
      */
-    void execute(Session session);
+    void execute(List<Execution> executions, Session session);
 }

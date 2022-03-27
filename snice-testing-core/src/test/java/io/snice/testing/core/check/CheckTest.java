@@ -28,8 +28,9 @@ class CheckTest {
     @ValueSource(ints = {0, 1, 2, 3, 10})
     public void testCheckAllHappy(final int count) {
         final var checks = generateChecks(count);
-        final var session = Check.check("hello world", new Session("my session"), checks);
-        final var counts = countSuccessVsFailures(session);
+        final var result = Check.check("hello world", new Session("my session"), checks);
+        final var session = result.left();
+        final var counts = countSuccessVsFailures(result.right());
         assertThat(counts.left(), is(0));
         assertThat(counts.right(), is(count));
         ensureAttributesCorrect(session, count);
@@ -39,8 +40,9 @@ class CheckTest {
     @ValueSource(ints = {0, 1, 2, 3, 10})
     public void testCheckAllHappyButNotSavedAs(final int count) {
         final var checks = generateChecks(false, count);
-        final var session = Check.check("hello world", new Session("my session"), checks);
-        final var counts = countSuccessVsFailures(session);
+        final var result = Check.check("hello world", new Session("my session"), checks);
+        final var session = result.left();
+        final var counts = countSuccessVsFailures(result.right());
         assertThat(counts.left(), is(0));
         assertThat(counts.right(), is(count));
         assertThat(session.attributes().isEmpty(), is(true));
@@ -54,8 +56,9 @@ class CheckTest {
     public void testCheckAllFailures(final int count) {
         final var failedIndeces = range(0, count);
         final var checks = generateChecks(count, failedIndeces);
-        final var session = Check.check("hello world", new Session("my session"), checks);
-        final var counts = countSuccessVsFailures(session);
+        final var result = Check.check("hello world", new Session("my session"), checks);
+        final var session = result.left();
+        final var counts = countSuccessVsFailures(result.right());
         assertThat(counts.left(), is(count));
         assertThat(counts.right(), is(0));
         ensureAttributesCorrect(session, 0);
@@ -74,8 +77,9 @@ class CheckTest {
         final var failedIndexes = oddOrEven(true, 0, count);
 
         final var checks = generateChecks(count, failedIndexes);
-        final var session = Check.check("hello world", new Session("my session"), checks);
-        final var counts = countSuccessVsFailures(session);
+        final var result = Check.check("hello world", new Session("my session"), checks);
+        final var session = result.left();
+        final var counts = countSuccessVsFailures(result.right());
         assertThat(counts.left(), is(fails));
         assertThat(counts.right(), is(succeeds));
 
@@ -88,9 +92,9 @@ class CheckTest {
         }
     }
 
-    private Pair<Integer, Integer> countSuccessVsFailures(final Session session) {
-        final long failures = session.checkResults().stream().filter(CheckResult::isFailure).count();
-        final long success = session.checkResults().size() - failures;
+    private Pair<Integer, Integer> countSuccessVsFailures(final List<CheckResult<String, ?>> checkResults) {
+        final long failures = checkResults.stream().filter(CheckResult::isFailure).count();
+        final long success = checkResults.size() - failures;
         return new Pair<>((int) failures, (int) success);
     }
 

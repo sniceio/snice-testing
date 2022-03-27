@@ -22,7 +22,7 @@ public interface HttpRequestBuilder extends MessageBuilder {
     /**
      * Specify the base URL for built off of this {@link HttpRequestBuilder}.
      * <p>
-     * If you do not specify the base URL, then the base URL configured on the {@link HttpProtocol.Builder}
+     * If you do not specify the base URL, then the base URL configured on the {@link HttpProtocol.HttpProtocolBuilder}
      * will be used. If neither have been specified and a FQDN has not been given when specifying which
      * HTTP method to use (so e.g. {@link #get(String)} or {@link #post(String)}, then an exception will
      * be thrown when the test is about to execute and it will fail.

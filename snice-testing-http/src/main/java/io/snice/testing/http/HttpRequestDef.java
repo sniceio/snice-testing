@@ -222,6 +222,8 @@ public record HttpRequestDef(String requestName,
             final var method = HttpMethod.valueOf(((String) values.get(METHOD_KEY)).toUpperCase());
             final var checks = (List<Check<HttpResponse>>) values.get(CHECKS_KEY);
 
+            // actually, you don't have to specify the target since it may come from the baseUrl off of
+            // the protocol config
             assertNotNull(target, "You must specify the target of the request");
             assertNotNull(method, "You must specify the method of the request");
 

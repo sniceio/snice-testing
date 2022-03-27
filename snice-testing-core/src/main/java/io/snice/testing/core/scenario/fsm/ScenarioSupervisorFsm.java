@@ -13,7 +13,9 @@ public class ScenarioSupervisorFsm {
     public static final Definition<ScenarioSupervisorState, ScenarioSupervisorCtx, ScenarioSupervisorData> definition;
 
     static {
-        final var builder = FSM.of(ScenarioSupervisorState.class).ofContextType(ScenarioSupervisorCtx.class).withDataType(ScenarioSupervisorData.class);
+        final var builder = FSM.of(ScenarioSupervisorState.class)
+                .ofContextType(ScenarioSupervisorCtx.class)
+                .withDataType(ScenarioSupervisorData.class);
 
         final var init = builder.withInitialState(INIT);
         final var running = builder.withState(RUNNING);
@@ -28,6 +30,10 @@ public class ScenarioSupervisorFsm {
                 .withAction((run, ctx, data) -> ctx.runScenario(run.session(), run.scenario(), run.ctx()));
 
         running.transitionTo(RUNNING)
+                .onEvent(ScenarioSupervisorMessages.RunCompleted.class)
+                .withAction(ScenarioSupervisorFsm::processRunCompleted);
+
+        running.transitionTo(RUNNING)
                 .onEvent(LifecycleEvent.Terminated.class)
                 .withAction(ScenarioSupervisorFsm::processScenarioTerminated);
 
@@ -38,11 +44,17 @@ public class ScenarioSupervisorFsm {
         definition = builder.build();
     }
 
+    private static void processRunCompleted(final ScenarioSupervisorMessages.RunCompleted event,
+                                            final ScenarioSupervisorCtx ctx,
+                                            final ScenarioSupervisorData data) {
+
+        System.err.println("Processing the result of a run");
+    }
+
     private static void processScenarioTerminated(final LifecycleEvent.Terminated event,
                                                   final ScenarioSupervisorCtx ctx,
                                                   final ScenarioSupervisorData data) {
 
         System.err.println("Processing the death of child: " + event.getActor());
     }
-
 }

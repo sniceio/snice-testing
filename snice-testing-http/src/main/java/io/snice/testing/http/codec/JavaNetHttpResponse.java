@@ -1,10 +1,12 @@
 package io.snice.testing.http.codec;
 
-import io.snice.codecs.codec.http.HttpMethod;
+import io.snice.buffer.Buffer;
+import io.snice.codecs.codec.http.HttpHeader;
 
-import java.net.URI;
 import java.net.http.HttpHeaders;
 import java.net.http.HttpResponse;
+import java.util.List;
+import java.util.Optional;
 
 import static io.snice.preconditions.PreConditions.assertNotNull;
 
@@ -22,27 +24,32 @@ public final class JavaNetHttpResponse<T> extends JavaNetHttpMessage implements 
     }
 
     @Override
-    public HttpMethod method() {
-        return HttpMethod.valueOf(resp.request().method().toUpperCase());
-    }
-
-    @Override
-    public URI uri() {
-        return resp.uri();
-    }
-
-    @Override
     public int statusCode() {
         return resp.statusCode();
     }
 
     @Override
-    public String statusMessage() {
+    public String reasonPhrase() {
         return "N/A";
     }
 
     @Override
     protected HttpHeaders internalHeaders() {
         return resp.headers();
+    }
+
+    @Override
+    public <T> Optional<HttpHeader<T>> header(final CharSequence name) {
+        throw new RuntimeException("To be deleted");
+    }
+
+    @Override
+    public <T> List<HttpHeader<T>> headers(final CharSequence name) {
+        throw new RuntimeException("To be deleted");
+    }
+
+    @Override
+    public Optional<Buffer> content() {
+        return Optional.empty();
     }
 }
