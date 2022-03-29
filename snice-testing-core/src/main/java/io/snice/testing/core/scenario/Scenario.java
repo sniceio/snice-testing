@@ -1,6 +1,7 @@
 package io.snice.testing.core.scenario;
 
 import io.snice.functional.Either;
+import io.snice.testing.core.Execution;
 import io.snice.testing.core.MessageBuilder;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.action.Action;
@@ -23,7 +24,7 @@ public record Scenario(String name, List<ActionBuilder> actions) {
     }
 
     public Scenario(final String name, final List<ActionBuilder> actions) {
-        assertNotEmpty(name);
+        assertNotEmpty(name, "You must specify a name for the scenario");
         this.name = name;
         this.actions = actions == null ? List.of() : Collections.unmodifiableList(new ArrayList<>(actions));
     }
@@ -131,12 +132,13 @@ public record Scenario(String name, List<ActionBuilder> actions) {
                                                Action next) implements Action {
 
         @Override
-        public void execute(final Session session) {
+        public void execute(final List<Execution> executions, final Session session) {
+            // TODO: add the "execution" of this step as well.
             try {
-                next.execute(f.apply(session));
+                next.execute(executions, f.apply(session));
             } catch (final Throwable t) {
                 // TODO: what to do with the exception?
-                next.execute(session.markAsFailed());
+                next.execute(executions, session.markAsFailed());
             }
         }
     }

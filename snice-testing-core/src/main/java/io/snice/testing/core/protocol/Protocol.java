@@ -3,8 +3,16 @@ package io.snice.testing.core.protocol;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.scenario.Scenario;
 
+/**
+ * {@link Protocol} is the base interface for all protocols. Simply provides
+ * the entry point into managing the stack (start/stop etc) as well
+ * as life-cycle management operations for a {@link Session}.
+ */
 public interface Protocol {
 
+    /**
+     * The {@link ProtocolRegistry.Key} under which this {@link Protocol} is registered.
+     */
     ProtocolRegistry.Key key();
 
     /**

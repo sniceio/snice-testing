@@ -69,9 +69,13 @@ public record Session(String name,
     }
 
     public Session attributes(final String name, final Object value) {
+        return new Session(name, status, extendAttributes(name, value));
+    }
+
+    private Map<String, Object> extendAttributes(final String name, final Object value) {
         final var newAttributes = new HashMap<>(attributes);
         newAttributes.put(name, value);
-        return new Session(name, status, newAttributes);
+        return newAttributes;
     }
 
     enum Status {

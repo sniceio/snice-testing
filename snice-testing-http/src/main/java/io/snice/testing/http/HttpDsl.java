@@ -1,11 +1,17 @@
 package io.snice.testing.http;
 
 
+import io.snice.networking.common.NetworkingUtils;
+import io.snice.networking.common.Transport;
+import io.snice.networking.config.NetworkInterfaceConfiguration;
 import io.snice.testing.core.SniceConfig;
 import io.snice.testing.http.check.HttpCheckSupport;
 import io.snice.testing.http.protocol.HttpProtocol;
-import io.snice.testing.http.protocol.HttpProtocol.Builder;
-import io.snice.testing.http.stack.HttpStackConfig;
+import io.snice.testing.http.protocol.HttpProtocol.HttpProtocolBuilder;
+
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.List;
 
 import static io.snice.preconditions.PreConditions.ensureNotEmpty;
 
@@ -19,10 +25,20 @@ public class HttpDsl extends HttpCheckSupport {
         // No instantiation of this class
     }
 
-    public static Builder http(final SniceConfig configuration) {
+    public static HttpProtocolBuilder http(final SniceConfig configuration) {
         // TODO: how do you turn the SniceConfig into a http config?
-        final var httpConfig = new HttpConfig(new HttpStackConfig());
-        return HttpProtocol.from(httpConfig);
+        try {
+            final var ip = NetworkingUtils.findPrimaryAddress().getHostAddress();
+            final var listen = new URI("https://" + ip + ":7777");
+            final var lp = new NetworkInterfaceConfiguration("default", listen, null, Transport.tcp);
+            final var httpConfig = new HttpConfig();
+            httpConfig.setNetworkInterfaces(List.of(lp));
+
+            return HttpProtocol.from(httpConfig);
+        } catch (final URISyntaxException e) {
+            // TODO
+            throw new RuntimeException(e);
+        }
     }
 
     public static HttpRequestBuilder http(final String requestName) {

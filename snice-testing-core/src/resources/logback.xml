@@ -14,11 +14,9 @@
         </encoder>
     </appender>
 
-    <logger name="io.hektor" level="debug">
-    </logger>
-
-    <logger name="io.netty" level="warn">
-    </logger>
+    <logger name="io.hektor" level="INFO"/>
+    <logger name="io.snice" level="INFO"/>
+    <logger name="io.netty" level="WARN"/>
 
     <root level="debug">
         <appender-ref ref="FILE"/>

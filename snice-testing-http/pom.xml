@@ -29,6 +29,32 @@
           <artifactId>codec-http</artifactId>
       </dependency>
 
+      <dependency>
+          <groupId>io.snice.networking</groupId>
+          <artifactId>networking-common</artifactId>
+      </dependency>
+
+      <dependency>
+          <groupId>io.snice.networking</groupId>
+          <artifactId>networking-core</artifactId>
+      </dependency>
+
+      <dependency>
+          <groupId>io.snice.networking</groupId>
+          <artifactId>networking-app</artifactId>
+      </dependency>
+
+      <dependency>
+          <groupId>io.snice.networking</groupId>
+          <artifactId>networking-netty</artifactId>
+      </dependency>
+
+      <dependency>
+          <groupId>io.snice.networking</groupId>
+          <artifactId>http-stack</artifactId>
+      </dependency>
+
+
       <!-- Test dependencies -->
       <dependency>
           <groupId>org.junit.jupiter</groupId>

@@ -1,4 +1,4 @@
-package io.snice.testing.http.protocol.jnet;
+package io.snice.testing.http.protocol.impl;
 
 import io.snice.codecs.codec.http.HttpProvider;
 import io.snice.preconditions.PreConditions;
@@ -7,7 +7,7 @@ import io.snice.testing.core.protocol.ProtocolRegistry;
 import io.snice.testing.http.HttpConfig;
 import io.snice.testing.http.codec.JavaNetHttpMessageFactory;
 import io.snice.testing.http.protocol.HttpProtocol;
-import io.snice.testing.http.stack.jnet.JavaNetHttpStack;
+import io.snice.testing.http.stack.impl.JavaNetHttpStack;
 
 import java.net.http.HttpClient;
 import java.time.Duration;
@@ -18,24 +18,22 @@ public record JavaNetHttpProtocol(HttpConfig config,
                                   JavaNetHttpStack stack,
                                   Optional<Expression> baseUrl) implements HttpProtocol {
 
-    public static Builder newBuilder(final HttpConfig config) {
+    public static HttpProtocolBuilder newBuilder(final HttpConfig config) {
         PreConditions.assertNotNull(config);
         return new JavaNetBuilder(config);
     }
 
     @Override
     public void start() {
-        System.err.println("HTTP Protocol Starting");
         stack.start();
     }
 
     @Override
     public void stop() {
-        System.err.println("HTTP Protocol Stopping");
         stack.stop();
     }
 
-    private static class JavaNetBuilder implements Builder {
+    private static class JavaNetBuilder implements HttpProtocolBuilder {
 
         private final HttpConfig config;
         private Expression baseUrl;
@@ -57,7 +55,7 @@ public record JavaNetHttpProtocol(HttpConfig config,
         }
 
         @Override
-        public Builder baseUrl(final String url) {
+        public HttpProtocolBuilder baseUrl(final String url) {
             baseUrl = Expression.of(url);
             return this;
         }

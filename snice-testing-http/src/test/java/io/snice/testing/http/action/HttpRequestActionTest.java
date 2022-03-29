@@ -5,6 +5,7 @@ import io.snice.codecs.codec.http.HttpMessageFactory;
 import io.snice.codecs.codec.http.HttpMethod;
 import io.snice.codecs.codec.http.HttpProvider;
 import io.snice.codecs.codec.http.HttpRequest;
+import io.snice.testing.core.Execution;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.action.Action;
 import io.snice.testing.http.TestBase;
@@ -20,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.net.URI;
+import java.util.List;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -34,6 +36,9 @@ class HttpRequestActionTest extends TestBase {
 
     @Captor
     private ArgumentCaptor<Session> sessionCaptor;
+
+    @Captor
+    private ArgumentCaptor<List<Execution>> executionsCaptor;
 
     @Mock
     private HttpMessageFactory messageFactory;
@@ -62,9 +67,10 @@ class HttpRequestActionTest extends TestBase {
     @Test
     public void testRequestActionButNoTargetUri(@Mock final Action next) throws Exception {
         final var action = new HttpRequestAction("Test", someHttpProtocol(), someHttpRequest(), next);
-        action.execute(new Session("Testing"));
+        final List<Execution> executions = List.of();
+        action.execute(executions, new Session("Testing"));
 
-        verify(next).execute(sessionCaptor.capture());
+        verify(next).execute(executionsCaptor.capture(), sessionCaptor.capture());
         assertThat(sessionCaptor.getValue().isFailed(), is(true));
     }
 
@@ -84,7 +90,8 @@ class HttpRequestActionTest extends TestBase {
 
         final var def = someHttpRequest("http://example.com", "hello", "world");
         final var action = new HttpRequestAction("Test", someHttpProtocol(stack), def, next);
-        action.execute(new Session("Testing"));
+        final List<Execution> executions = List.of();
+        action.execute(executions, new Session("Testing"));
 
         // check so that we build the new request properly
         verify(builder).header("hello", "world");
