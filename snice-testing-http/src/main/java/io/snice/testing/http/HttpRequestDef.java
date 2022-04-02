@@ -42,9 +42,10 @@ public record HttpRequestDef(String requestName,
         this(requestName, method, List.of(), null, null, null);
     }
 
-    public static HttpRequestBuilder of(final String requestName) {
+    public static InitiateHttpRequestBuilder of(final String requestName, final HttpMethod method, final String uri) {
         assertNotEmpty(requestName);
-        return new DefaultHttpRequestBuilder(requestName);
+        assertNotNull(method);
+        return new DefaultInitiateHttpRequestBuilder(requestName, method, uri);
     }
 
     /**
@@ -96,7 +97,7 @@ public record HttpRequestDef(String requestName,
         }
     }
 
-    private static class DefaultHttpRequestBuilder implements HttpRequestBuilder {
+    private static class DefaultInitiateHttpRequestBuilder implements InitiateHttpRequestBuilder {
 
         private static final String REQUEST_NAME_KEY = "REQUEST_NAME";
 
@@ -118,25 +119,30 @@ public record HttpRequestDef(String requestName,
          */
         private final Map<String, Object> values;
 
-        private DefaultHttpRequestBuilder(final String requestName) {
-            this(createDefaultValues(requestName));
+        private DefaultInitiateHttpRequestBuilder(final String requestName,
+                                                  final HttpMethod method,
+                                                  final String uri) {
+            this(createDefaultValues(requestName, method, uri));
         }
 
-        private static Map<String, Object> createDefaultValues(final String requestName) {
+        private static Map<String, Object> createDefaultValues(final String requestName, final HttpMethod method, final String uri) {
             final var values = new HashMap<String, Object>();
             values.put(REQUEST_NAME_KEY, requestName);
             values.put(HEADERS_KEY, Collections.unmodifiableMap(new HashMap<String, Expression>()));
-            values.put(METHOD_KEY, "GET");
+            values.put(METHOD_KEY, method);
             values.put(CHECKS_KEY, List.of());
+            if (uri != null && !uri.isEmpty()) {
+                values.put(PATH_KEY, Expression.of(uri));
+            }
             return values;
         }
 
-        private DefaultHttpRequestBuilder(final Map<String, Object> values) {
+        private DefaultInitiateHttpRequestBuilder(final Map<String, Object> values) {
             this.values = Collections.unmodifiableMap(values);
         }
 
         @Override
-        public HttpRequestBuilder baseUrl(final String url) {
+        public InitiateHttpRequestBuilder baseUrl(final String url) {
             assertNotEmpty(url);
             try {
                 final var expression = Expression.of(url);
@@ -154,22 +160,22 @@ public record HttpRequestDef(String requestName,
             }
         }
 
-        private DefaultHttpRequestBuilder extendHeaders(final String name, final String value) {
+        private DefaultInitiateHttpRequestBuilder extendHeaders(final String name, final String value) {
             final var headers = (Map<String, Expression>) values.get(HEADERS_KEY);
             return extend(HEADERS_KEY, extendMap(headers, name, value));
         }
 
-        private DefaultHttpRequestBuilder extendChecks(final Check<HttpResponse> check) {
+        private DefaultInitiateHttpRequestBuilder extendChecks(final Check<HttpResponse> check) {
             final var checks = (List<Check<HttpResponse>>) values.get(CHECKS_KEY);
             final var newChecks = new ArrayList<>(checks);
             newChecks.add(check);
             return extend(CHECKS_KEY, Collections.unmodifiableList(newChecks));
         }
 
-        private DefaultHttpRequestBuilder extend(final String key, final Object value) {
+        private DefaultInitiateHttpRequestBuilder extend(final String key, final Object value) {
             final var newValues = new HashMap<>(values);
             newValues.put(key, value);
-            return new DefaultHttpRequestBuilder(newValues);
+            return new DefaultInitiateHttpRequestBuilder(newValues);
         }
 
         private Map<String, Expression> extendMap(final Map<String, Expression> map, final String key, final String value) {
@@ -179,38 +185,16 @@ public record HttpRequestDef(String requestName,
         }
 
         @Override
-        public HttpRequestBuilder header(final String name, final String value) {
+        public InitiateHttpRequestBuilder header(final String name, final String value) {
             assertNotEmpty(name);
             assertNotEmpty(value);
             return extendHeaders(name, value);
         }
 
         @Override
-        public HttpRequestBuilder check(final Check<HttpResponse> check) {
+        public InitiateHttpRequestBuilder check(final Check<HttpResponse> check) {
             assertNotNull(check);
             return extendChecks(check);
-        }
-
-        @Override
-        public HttpRequestBuilder get(final String uri) throws IllegalArgumentException {
-            assertNotEmpty(uri);
-            return extend(METHOD_KEY, "GET").extend(PATH_KEY, Expression.of(uri));
-        }
-
-        @Override
-        public HttpRequestBuilder get() {
-            return extend(METHOD_KEY, "GET");
-        }
-
-        @Override
-        public HttpRequestBuilder post(final String uri) {
-            assertNotEmpty(uri);
-            return extend(METHOD_KEY, "POST").extend(PATH_KEY, Expression.of(uri));
-        }
-
-        @Override
-        public HttpRequestBuilder post() {
-            return extend(METHOD_KEY, "POST");
         }
 
         @Override
@@ -219,12 +203,9 @@ public record HttpRequestDef(String requestName,
             final var baseUrl = (Expression) values.get(BASE_URL_KEY);
             final var headers = (Map<String, Expression>) values.get(HEADERS_KEY);
             final var target = (Expression) values.get(PATH_KEY);
-            final var method = HttpMethod.valueOf(((String) values.get(METHOD_KEY)).toUpperCase());
+            final var method = (HttpMethod) values.get(METHOD_KEY);
             final var checks = (List<Check<HttpResponse>>) values.get(CHECKS_KEY);
 
-            // actually, you don't have to specify the target since it may come from the baseUrl off of
-            // the protocol config
-            assertNotNull(target, "You must specify the target of the request");
             assertNotNull(method, "You must specify the method of the request");
 
             return new HttpRequestDef(requestName, method, checks, Optional.ofNullable(baseUrl), Optional.ofNullable(target), headers);

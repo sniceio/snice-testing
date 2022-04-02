@@ -12,15 +12,15 @@ import io.snice.testing.http.protocol.HttpProtocol;
  * the "template".
  * <p>
  * Once a HTTP request has been fully been specified, this builder, when asked, will produce a
- * {@link HttpRequestDef}. The main difference between the {@link HttpRequestDef} and this {@link HttpRequestBuilder}
+ * {@link HttpRequestDef}. The main difference between the {@link HttpRequestDef} and this {@link InitiateHttpRequestBuilder}
  * is just that the request definition is GUARANTEED to be complete and accurate, whereas the builder does not.
  * <p>
  * TODO: add examples
  */
-public interface HttpRequestBuilder extends MessageBuilder {
+public interface InitiateHttpRequestBuilder extends MessageBuilder {
 
     /**
-     * Specify the base URL for built off of this {@link HttpRequestBuilder}.
+     * Specify the base URL for built off of this {@link InitiateHttpRequestBuilder}.
      * <p>
      * If you do not specify the base URL, then the base URL configured on the {@link HttpProtocol.HttpProtocolBuilder}
      * will be used. If neither have been specified and a FQDN has not been given when specifying which
@@ -30,7 +30,7 @@ public interface HttpRequestBuilder extends MessageBuilder {
      * @param uri
      * @return
      */
-    HttpRequestBuilder baseUrl(String uri);
+    InitiateHttpRequestBuilder baseUrl(String uri);
 
     /**
      * Add a new HTTP header to this builder.
@@ -39,7 +39,7 @@ public interface HttpRequestBuilder extends MessageBuilder {
      * @param value the value of the header. The value can be a variable expression.
      * @return
      */
-    HttpRequestBuilder header(String name, String value);
+    InitiateHttpRequestBuilder header(String name, String value);
 
     /**
      * Convenience method for adding the following two headers:
@@ -51,48 +51,17 @@ public interface HttpRequestBuilder extends MessageBuilder {
      *
      * @return
      */
-    default HttpRequestBuilder asJson() {
+    default InitiateHttpRequestBuilder asJson() {
         return header("Accept", "application/json").
                 header("Content-Type", "application/json");
     }
 
-    HttpRequestBuilder check(Check<HttpResponse> check);
-
-    /**
-     * Specify that this HTTP request is a GET and the URI to fetch.
-     * <p>
-     * You can specify a FQDN, in which case the {@link #baseUrl(String)}
-     * will have no effect on this request. If you just specify a path, the
-     * {@link #baseUrl(String)} will be pre-pended to form the FQDN.
-     * <p>
-     * Also, the URI is allowed to contain variable expression, which will be expanded
-     * when the test executes. This also means that the validity of the resulting URI
-     * cannot be verified (if it is a variable expression) until the execution starts.
-     *
-     * @param uri the URI to fetch, which is either a FQDN or a path that will be appended to the base URL.
-     * @return a new instance of the {@link HttpRequestBuilder} with the new URI for the GET.
-     * @throws IllegalArgumentException in case the URI is null or malformed.
-     */
-    HttpRequestBuilder get(String uri) throws IllegalArgumentException;
-
-    /**
-     * Same as {@link #get(String)} but allows you to not specify any further information in the URI,
-     * in which case the {@link #baseUrl(String)} MUST have been specified when the HTTP request
-     * eventually is constructed.
-     *
-     * @return a new instance of the {@link HttpRequestBuilder} with the URI for the
-     * GET set to that of the {@link #baseUrl(String)}.
-     */
-    HttpRequestBuilder get();
-
-    HttpRequestBuilder post(String uri);
-
-    HttpRequestBuilder post();
+    InitiateHttpRequestBuilder check(Check<HttpResponse> check);
 
     /**
      * Build a {@link HttpRequestDef}. You can call this method several times
      * and we will keep building new instances of {@link HttpRequestDef}. Of course, since
-     * a {@link HttpRequestBuilder} is mutable, you will be getting the exact same info in
+     * a {@link InitiateHttpRequestBuilder} is mutable, you will be getting the exact same info in
      * the definition.
      *
      * @return a new instance of a {@link HttpRequestDef}

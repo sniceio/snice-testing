@@ -1,6 +1,7 @@
 package io.snice.testing.http;
 
 import io.netty.util.NetUtil;
+import io.snice.codecs.codec.http.HttpMethod;
 import io.snice.testing.core.Snice;
 import io.snice.testing.core.SniceConfig;
 import org.junit.jupiter.api.Test;
@@ -22,6 +23,26 @@ public class HttpScenarioTest {
         final var port = 80;
         final var http = http(config)
                 .baseUrl("https://example.com:" + port);
+
+        http("Accept Webhook")
+                .accept(HttpMethod.POST, "/whatever")
+                .saveAs("my webhook");
+        /**
+         http("Accept Webhook")
+         .accept(POST, "/whatatever") // You can specify the relative path only. Snice will generate the rest
+         .saveAs("my_webhook") // so we can reference it elsewhere. Mandatory parameter. Also must be unique within the scenario.
+         .guard(req -> true) //
+         .timeout("30s") // applies to each "wait" period. If you expect 3 callbacks
+         .times(1) // once being
+         .times(2) // exactly two times
+         .times(1, 4)
+         .atLeast(1)
+         .max(3)
+         .check(reqUri("asdf").saveAs("nisse"))
+         .respond("200 OK")
+         .header("Hello", "World")
+         .header("Connection", "Close")
+         */
 
         final var listRepos = http("Example.com")
                 .get("/")

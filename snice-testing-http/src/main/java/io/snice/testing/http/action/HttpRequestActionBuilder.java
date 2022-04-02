@@ -3,12 +3,12 @@ package io.snice.testing.http.action;
 import io.snice.testing.core.action.Action;
 import io.snice.testing.core.action.ActionBuilder;
 import io.snice.testing.core.scenario.ScenarioContex;
-import io.snice.testing.http.HttpRequestBuilder;
+import io.snice.testing.http.InitiateHttpRequestBuilder;
 import io.snice.testing.http.protocol.HttpProtocol;
 
 import static io.snice.preconditions.PreConditions.assertNotNull;
 
-public record HttpRequestActionBuilder(HttpRequestBuilder builder) implements ActionBuilder {
+public record HttpRequestActionBuilder(InitiateHttpRequestBuilder builder) implements ActionBuilder {
 
     public HttpRequestActionBuilder {
         assertNotNull(builder);

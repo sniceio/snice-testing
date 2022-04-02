@@ -30,9 +30,8 @@ class HttpRequestDefTest extends TestBase {
     @Test
     public void testCreateHttpRequestDefThroughBuilder() {
 
-        final var def = HttpRequestDef.of("Unit Test Get")
+        final var def = HttpRequestDef.of("Unit Test Get", HttpMethod.GET, "/nisse")
                 .baseUrl("http://example.com")
-                .get("/nisse")
                 .header("hello", "world")
                 .build();
 
