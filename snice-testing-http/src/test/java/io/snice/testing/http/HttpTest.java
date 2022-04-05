@@ -64,21 +64,21 @@ public class HttpTest {
         ensureHeader(def3, "Content-Type", "application/json");
     }
 
-    private void ensureHeader(final HttpRequestDef def, final String name, final String expectedValue) {
+    private void ensureHeader(final InitiateHttpRequestDef def, final String name, final String expectedValue) {
         final var headerExpression = def.headers().get(name);
         assertThat(headerExpression.isStatic(), is(true));
         assertThat(headerExpression, is(Expression.of(expectedValue)));
     }
 
-    private void ensureHeaderDoesNotExist(final HttpRequestDef def, final String... names) {
+    private void ensureHeaderDoesNotExist(final InitiateHttpRequestDef def, final String... names) {
         Arrays.asList(names).forEach(name -> assertThat(def.headers().get(name), is(nullValue())));
     }
 
-    private void ensureHeaderCount(final HttpRequestDef def, final int expected) {
+    private void ensureHeaderCount(final InitiateHttpRequestDef def, final int expected) {
         assertThat(def.headers().size(), is(expected));
     }
 
-    private void ensureUrl(final HttpRequestDef def, final URL expected) {
+    private void ensureUrl(final InitiateHttpRequestDef def, final URL expected) {
         // for our tests, all (so far) are static expressions.
         final var expression = def.baseUrl().get();
         assertThat(expression.isStatic(), is(true));

@@ -7,7 +7,7 @@ import io.snice.testing.core.Session;
 import io.snice.testing.core.action.ActionBuilder;
 import io.snice.testing.core.check.Check;
 import io.snice.testing.core.common.Expression;
-import io.snice.testing.http.action.HttpRequestActionBuilder;
+import io.snice.testing.http.action.InitiateHttpRequestActionBuilder;
 import io.snice.testing.http.protocol.HttpProtocol;
 
 import java.net.MalformedURLException;
@@ -23,14 +23,17 @@ import static io.snice.functional.Optionals.isAllEmpty;
 import static io.snice.preconditions.PreConditions.assertNotEmpty;
 import static io.snice.preconditions.PreConditions.assertNotNull;
 
-public record HttpRequestDef(String requestName,
-                             HttpMethod method,
-                             List<Check<HttpResponse>> checks,
-                             Optional<Expression> baseUrl,
-                             Optional<Expression> uri,
-                             Map<String, Expression> headers) {
+/**
+ *
+ */
+public record InitiateHttpRequestDef(String requestName,
+                                     HttpMethod method,
+                                     List<Check<HttpResponse>> checks,
+                                     Optional<Expression> baseUrl,
+                                     Optional<Expression> uri,
+                                     Map<String, Expression> headers) {
 
-    public HttpRequestDef {
+    public InitiateHttpRequestDef {
         assertNotEmpty(requestName, "The HTTP request must have a name");
         assertNotNull(method, "You must specify the HTTP Method");
         baseUrl = baseUrl == null ? Optional.empty() : baseUrl;
@@ -38,7 +41,7 @@ public record HttpRequestDef(String requestName,
         headers = headers == null ? Map.of() : headers;
     }
 
-    public HttpRequestDef(final String requestName, final HttpMethod method) {
+    public InitiateHttpRequestDef(final String requestName, final HttpMethod method) {
         this(requestName, method, List.of(), null, null, null);
     }
 
@@ -49,7 +52,7 @@ public record HttpRequestDef(String requestName,
     }
 
     /**
-     * The {@link HttpRequestDef} can optionally contain information about
+     * The {@link InitiateHttpRequestDef} can optionally contain information about
      * the target URL but if not specified, the {@link HttpProtocol#baseUrl()}
      * will be used as the target. Also, any of the components may contain a
      * dynamic {@link Expression} which will be resolved by looking up the
@@ -198,7 +201,7 @@ public record HttpRequestDef(String requestName,
         }
 
         @Override
-        public HttpRequestDef build() {
+        public InitiateHttpRequestDef build() {
             final var requestName = (String) values.get(REQUEST_NAME_KEY);
             final var baseUrl = (Expression) values.get(BASE_URL_KEY);
             final var headers = (Map<String, Expression>) values.get(HEADERS_KEY);
@@ -208,12 +211,12 @@ public record HttpRequestDef(String requestName,
 
             assertNotNull(method, "You must specify the method of the request");
 
-            return new HttpRequestDef(requestName, method, checks, Optional.ofNullable(baseUrl), Optional.ofNullable(target), headers);
+            return new InitiateHttpRequestDef(requestName, method, checks, Optional.ofNullable(baseUrl), Optional.ofNullable(target), headers);
         }
 
         @Override
         public ActionBuilder toActionBuilder() {
-            return new HttpRequestActionBuilder(this);
+            return new InitiateHttpRequestActionBuilder(this);
         }
     }
 }

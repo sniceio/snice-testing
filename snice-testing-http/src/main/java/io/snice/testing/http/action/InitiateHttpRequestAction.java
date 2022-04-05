@@ -5,7 +5,7 @@ import io.snice.testing.core.Execution;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.action.Action;
 import io.snice.testing.core.common.ListOperations;
-import io.snice.testing.http.HttpRequestDef;
+import io.snice.testing.http.InitiateHttpRequestDef;
 import io.snice.testing.http.protocol.HttpProtocol;
 import io.snice.testing.http.response.ResponseProcessor;
 
@@ -13,10 +13,10 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.List;
 
-public record HttpRequestAction(String name,
-                                HttpProtocol http,
-                                HttpRequestDef httpDef,
-                                Action next) implements Action {
+public record InitiateHttpRequestAction(String name,
+                                        HttpProtocol http,
+                                        InitiateHttpRequestDef httpDef,
+                                        Action next) implements Action {
 
     @Override
     public void execute(final List<Execution> executions, final Session session) {
@@ -42,7 +42,7 @@ public record HttpRequestAction(String name,
         }
     }
 
-    private static HttpRequest map(final Session session, final HttpRequestDef def, final URL target) throws URISyntaxException {
+    private static HttpRequest map(final Session session, final InitiateHttpRequestDef def, final URL target) throws URISyntaxException {
         final var builder = HttpRequest.create(def.method(), target.toURI());
         def.headers().entrySet().forEach(entry -> builder.header(entry.getKey(), entry.getValue().apply(session)));
         return builder.build();

@@ -144,13 +144,13 @@ public class HttpDsl extends HttpCheckSupport {
         return new InitiateOrAcceptStep() {
             @Override
             public InitiateHttpRequestBuilder initiate(final HttpMethod method, final String uri) {
-                return HttpRequestDef.of(requestName, method, uri);
+                return InitiateHttpRequestDef.of(requestName, method, uri);
             }
 
             @Override
             public SaveAcceptFqdnAsStep accept(final HttpMethod method, final String path) {
                 assertNotNull(method);
-                return null;
+                return saveAsName -> AcceptHttpRequestDef.of(requestName, method, path, saveAsName);
             }
         };
     }

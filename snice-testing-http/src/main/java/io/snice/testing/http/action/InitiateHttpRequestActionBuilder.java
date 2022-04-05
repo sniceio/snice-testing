@@ -8,9 +8,9 @@ import io.snice.testing.http.protocol.HttpProtocol;
 
 import static io.snice.preconditions.PreConditions.assertNotNull;
 
-public record HttpRequestActionBuilder(InitiateHttpRequestBuilder builder) implements ActionBuilder {
+public record InitiateHttpRequestActionBuilder(InitiateHttpRequestBuilder builder) implements ActionBuilder {
 
-    public HttpRequestActionBuilder {
+    public InitiateHttpRequestActionBuilder {
         assertNotNull(builder);
     }
 
@@ -18,6 +18,6 @@ public record HttpRequestActionBuilder(InitiateHttpRequestBuilder builder) imple
     public Action build(final ScenarioContex ctx, final Action next) {
         final var protocol = (HttpProtocol) ctx.registry().protocol(HttpProtocol.httpProtocolKey).orElseThrow(() -> new IllegalArgumentException("HTTP Protocol has not been configured"));
         final var httpRequestDef = builder.build();
-        return new HttpRequestAction(httpRequestDef.requestName(), protocol, httpRequestDef, next);
+        return new InitiateHttpRequestAction(httpRequestDef.requestName(), protocol, httpRequestDef, next);
     }
 }

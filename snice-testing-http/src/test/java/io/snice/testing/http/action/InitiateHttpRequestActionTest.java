@@ -8,6 +8,7 @@ import io.snice.codecs.codec.http.HttpRequest;
 import io.snice.testing.core.Execution;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.action.Action;
+import io.snice.testing.http.InitiateHttpRequestDef;
 import io.snice.testing.http.TestBase;
 import io.snice.testing.http.protocol.HttpTransaction;
 import io.snice.testing.http.response.ResponseProcessor;
@@ -32,7 +33,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class HttpRequestActionTest extends TestBase {
+class InitiateHttpRequestActionTest extends TestBase {
 
     @Captor
     private ArgumentCaptor<Session> sessionCaptor;
@@ -61,12 +62,12 @@ class HttpRequestActionTest extends TestBase {
     }
 
     /**
-     * If the user specifies a {@link io.snice.testing.http.HttpRequestDef} where the target URL is
+     * If the user specifies a {@link InitiateHttpRequestDef} where the target URL is
      * unresolvable, we need to error out with a failed session. This tests that.
      */
     @Test
     public void testRequestActionButNoTargetUri(@Mock final Action next) throws Exception {
-        final var action = new HttpRequestAction("Test", someHttpProtocol(), someHttpRequest(), next);
+        final var action = new InitiateHttpRequestAction("Test", someHttpProtocol(), someHttpRequest(), next);
         final List<Execution> executions = List.of();
         action.execute(executions, new Session("Testing"));
 
@@ -89,7 +90,7 @@ class HttpRequestActionTest extends TestBase {
         when(stack.newTransaction(httpRequest)).thenReturn(transactionBuilder);
 
         final var def = someHttpRequest("http://example.com", "hello", "world");
-        final var action = new HttpRequestAction("Test", someHttpProtocol(stack), def, next);
+        final var action = new InitiateHttpRequestAction("Test", someHttpProtocol(stack), def, next);
         final List<Execution> executions = List.of();
         action.execute(executions, new Session("Testing"));
 

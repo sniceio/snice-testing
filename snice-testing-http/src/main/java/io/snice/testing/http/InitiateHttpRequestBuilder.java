@@ -12,7 +12,7 @@ import io.snice.testing.http.protocol.HttpProtocol;
  * the "template".
  * <p>
  * Once a HTTP request has been fully been specified, this builder, when asked, will produce a
- * {@link HttpRequestDef}. The main difference between the {@link HttpRequestDef} and this {@link InitiateHttpRequestBuilder}
+ * {@link InitiateHttpRequestDef}. The main difference between the {@link InitiateHttpRequestDef} and this {@link InitiateHttpRequestBuilder}
  * is just that the request definition is GUARANTEED to be complete and accurate, whereas the builder does not.
  * <p>
  * TODO: add examples
@@ -59,13 +59,13 @@ public interface InitiateHttpRequestBuilder extends MessageBuilder {
     InitiateHttpRequestBuilder check(Check<HttpResponse> check);
 
     /**
-     * Build a {@link HttpRequestDef}. You can call this method several times
-     * and we will keep building new instances of {@link HttpRequestDef}. Of course, since
+     * Build a {@link InitiateHttpRequestDef}. You can call this method several times
+     * and we will keep building new instances of {@link InitiateHttpRequestDef}. Of course, since
      * a {@link InitiateHttpRequestBuilder} is mutable, you will be getting the exact same info in
      * the definition.
      *
-     * @return a new instance of a {@link HttpRequestDef}
+     * @return a new instance of a {@link InitiateHttpRequestDef}
      */
-    HttpRequestDef build();
+    InitiateHttpRequestDef build();
 
 }

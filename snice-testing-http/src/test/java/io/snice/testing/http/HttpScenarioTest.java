@@ -26,7 +26,9 @@ public class HttpScenarioTest {
 
         http("Accept Webhook")
                 .accept(HttpMethod.POST, "/whatever")
-                .saveAs("my webhook");
+                .saveAs("my webhook")
+                .header("nisse", "apa");
+
         /**
          http("Accept Webhook")
          .accept(POST, "/whatatever") // You can specify the relative path only. Snice will generate the rest
