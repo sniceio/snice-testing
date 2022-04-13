@@ -22,6 +22,23 @@ public class AcceptHttpRequestDefTest extends TestBase {
     }
 
     /**
+     * When not specified, the response will be 200 OK.
+     */
+    @Test
+    public void testDefaultResponseStatusCode() {
+        var def = someAccept().build();
+        assertThat(def.statusCode(), is(200));
+        assertThat(def.reasonPhrase(), is("OK"));
+
+        // we can specify just one or the other too
+        def = someAccept().respond(400).build();
+        assertThat(def.statusCode(), is(400));
+        // TODO: this should be the default reason phrase.
+        assertThat(def.reasonPhrase(), is("OK"));
+
+    }
+
+    /**
      * Builders are immutable and as such, as you add more "stuff" to the builder,
      * it shouldn't affect a previous builder. Ensure that that is true.
      */
@@ -48,12 +65,12 @@ public class AcceptHttpRequestDefTest extends TestBase {
                 .header("apa", "monkey")
                 .header("nisse", "hello")
                 .check(header("Connection").is("Close").saveAs("connection_header"))
+                .check(header("Hello").is("World").saveAs("hello_world"))
                 .build();
 
         assertThat(def.saveAs(), is("unit_test"));
         assertHeaders(def.headers(), "apa", "monkey", "nisse", "hello");
         assertThat(def.checks().size(), is(1));
-        // .check()
     }
 
 }

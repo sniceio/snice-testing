@@ -23,7 +23,7 @@ public class ScenarioSupervisorFsm {
 
         init.transitionTo(RUNNING)
                 .onEvent(ScenarioSupervisorMessages.Init.class)
-                .withAction(i -> System.err.println("initializing"));
+                .consume(); // nothing to do at the moment
 
         running.transitionTo(RUNNING)
                 .onEvent(ScenarioSupervisorMessages.Run.class)
@@ -39,7 +39,7 @@ public class ScenarioSupervisorFsm {
 
         running.transitionTo(TERMINATED)
                 .onEvent(ScenarioSupervisorMessages.Terminate.class)
-                .withAction(e -> System.err.println("terminated"));
+                .consume(); // nothing to do at the moment
 
         definition = builder.build();
     }

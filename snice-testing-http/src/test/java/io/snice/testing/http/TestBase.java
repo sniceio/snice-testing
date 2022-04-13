@@ -1,10 +1,18 @@
 package io.snice.testing.http;
 
+import io.snice.codecs.codec.http.HttpMessage;
 import io.snice.codecs.codec.http.HttpMethod;
+import io.snice.codecs.codec.http.HttpProvider;
+import io.snice.codecs.codec.http.HttpRequest;
+import io.snice.networking.http.impl.NettyHttpMessageFactory;
 import io.snice.testing.core.common.Expression;
 import io.snice.testing.http.protocol.HttpProtocol;
 import io.snice.testing.http.stack.HttpStack;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +25,10 @@ import static org.mockito.Mockito.when;
 
 public class TestBase {
 
+    @BeforeAll
+    public static void setupEnvironment() {
+        HttpProvider.setMessageFactory(new NettyHttpMessageFactory());
+    }
 
     public static HttpProtocol someHttpProtocol(final HttpStack stack) {
         return someHttpProtocol(stack, null);
@@ -40,16 +52,33 @@ public class TestBase {
         return protocol;
     }
 
-
-    public static InitiateHttpRequestDef someHttpRequest() {
-        return someHttpRequest(null);
+    public static HttpMessage.Builder<HttpRequest> someHttpRequest(final String... headers) {
+        assertThat(headers.length % 2, is(0));
+        final var builder = someHttpRequest(HttpMethod.POST, "/hello");
+        for (int i = 0; i < headers.length; i += 2) {
+            builder.header(headers[i], headers[i + 1]);
+        }
+        return builder;
     }
 
-    public static InitiateHttpRequestDef someHttpRequest(final String baseUrl) {
-        return someHttpRequest(baseUrl, new String[0]);
+    public static HttpMessage.Builder<HttpRequest> someHttpRequest(final HttpMethod method, final String uri) {
+        try {
+            return HttpRequest.create(method, new URI(uri));
+        } catch (final URISyntaxException e) {
+            Assertions.fail("Please pass in a proper URI. This test is not about testing the URI class!!!");
+            throw new RuntimeException(e);
+        }
     }
 
-    public static InitiateHttpRequestDef someHttpRequest(final String baseUrl, final String... headers) {
+    public static InitiateHttpRequestDef someHttpRequestDef() {
+        return someHttpRequestDef(null);
+    }
+
+    public static InitiateHttpRequestDef someHttpRequestDef(final String baseUrl) {
+        return someHttpRequestDef(baseUrl, new String[0]);
+    }
+
+    public static InitiateHttpRequestDef someHttpRequestDef(final String baseUrl, final String... headers) {
         final Optional<Expression> baseExp = baseUrl == null ? Optional.empty() : Optional.of(Expression.of(baseUrl));
         final var map = new HashMap<String, Expression>();
         for (int i = 0; i < headers.length; i += 2) {
@@ -75,5 +104,14 @@ public class TestBase {
             assertThat(headers.get(expected[i]), is(Expression.of(expected[i + 1])));
         }
     }
+
+    public static AcceptHttpRequestBuilder someAccept() {
+        return someAccept("Unit Test", HttpMethod.GET);
+    }
+
+    public static AcceptHttpRequestBuilder someAccept(final String name, final HttpMethod method) {
+        return AcceptHttpRequestDef.of(name, method, "/whatever", "hello");
+    }
+
 
 }

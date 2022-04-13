@@ -15,6 +15,10 @@ public interface AcceptHttpRequestBuilder extends HttpMessageDefBuilder {
      */
     AcceptHttpRequestBuilder header(String name, String value);
 
+    AcceptHttpRequestBuilder respond(int statusCode);
+
+    AcceptHttpRequestBuilder respond(int statusCode, String reasonPhrase);
+
     /**
      * A check to perform on the incoming {@link HttpRequest}.
      */

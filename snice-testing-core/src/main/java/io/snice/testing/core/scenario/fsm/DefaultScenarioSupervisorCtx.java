@@ -33,7 +33,7 @@ public class DefaultScenarioSupervisorCtx implements ScenarioSupervisorCtx, FsmA
     @Override
     public void runScenario(final Session session, final Scenario scenario, final ScenarioContex ctx) {
         final var props = configureScenarioFsm(session, scenario, ctx);
-        final var scnActor = ctx().actorOf(scenario.name(), props);
+        final var scnActor = ctx().actorOf(scenario.uuid().asString(), props);
     }
 
 

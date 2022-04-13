@@ -10,6 +10,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import static io.snice.testing.core.CoreDsl.scenario;
 import static io.snice.testing.http.HttpDsl.http;
+import static io.snice.testing.http.check.HttpCheckSupport.header;
 import static io.snice.testing.http.check.HttpCheckSupport.status;
 
 @ExtendWith(MockitoExtension.class)
@@ -24,9 +25,11 @@ public class HttpScenarioTest {
         final var http = http(config)
                 .baseUrl("https://example.com:" + port);
 
-        http("Accept Webhook")
+        final var webhook = http("Accept Webhook")
                 .accept(HttpMethod.POST, "/whatever")
                 .saveAs("my webhook")
+                .check(header("Connection").is("Close"))
+                .respond(200)
                 .header("nisse", "apa");
 
         /**
@@ -53,7 +56,7 @@ public class HttpScenarioTest {
                 .check(status().is(200).saveAs("hello_status"));
 
         final var scenario = scenario("Simple HTTP GET")
-                .execute(listRepos)
+                .execute(webhook)
                 // .latch("hello_latch").await() // to wait for a latch to open.
                 .execute(session -> {
                     System.err.println("Session variable: " + session.attributes("hello_status"));

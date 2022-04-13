@@ -1,5 +1,7 @@
 package io.snice.testing.core;
 
+import io.snice.identity.sri.SessionResourceIdentifier;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -7,19 +9,21 @@ import java.util.Optional;
 import static io.snice.preconditions.PreConditions.assertNotEmpty;
 import static io.snice.preconditions.PreConditions.assertNotNull;
 
-public record Session(String name,
+public record Session(SessionResourceIdentifier uuid,
+                      String name,
                       Status status,
                       Map<String, Object> attributes) {
 
 
     public Session {
+        assertNotNull(uuid);
         assertNotEmpty(name);
         assertNotNull(status);
         assertNotNull(attributes);
     }
 
     public Session(final String name) {
-        this(name, Status.OK, Map.of());
+        this(SessionResourceIdentifier.of(), name, Status.OK, Map.of());
     }
 
     public boolean isFailed() {
@@ -40,7 +44,7 @@ public record Session(String name,
             return this;
         }
 
-        return new Session(name, Status.KO, attributes);
+        return new Session(uuid, name, Status.KO, attributes);
     }
 
     /**
@@ -53,7 +57,7 @@ public record Session(String name,
             return this;
         }
 
-        return new Session(name, Status.OK, attributes);
+        return new Session(uuid, name, Status.OK, attributes);
     }
 
 
@@ -69,7 +73,7 @@ public record Session(String name,
     }
 
     public Session attributes(final String name, final Object value) {
-        return new Session(name, status, extendAttributes(name, value));
+        return new Session(uuid, name, status, extendAttributes(name, value));
     }
 
     private Map<String, Object> extendAttributes(final String name, final Object value) {

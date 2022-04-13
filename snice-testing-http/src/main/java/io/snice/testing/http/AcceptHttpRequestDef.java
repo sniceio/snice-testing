@@ -18,6 +18,8 @@ import java.util.Map;
 public record AcceptHttpRequestDef(String requestName,
                                    HttpMethod method,
                                    Expression path,
+                                   int statusCode,
+                                   String reasonPhrase,
                                    Map<String, Expression> headers,
                                    List<Check<HttpRequest>> checks,
                                    String saveAs) {

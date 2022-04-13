@@ -71,6 +71,14 @@ public final class Snice {
 
     private Snice run() throws InterruptedException {
 
+        // TODO: new flow, something like this:
+        // 1. Gather all protocol settings from all the Scenarios that we are supposed to execute.
+        // 2. Ensure there are no conflicts (not sure what those conflicts would be. Shouldn't really be any)
+        // 3. Allocate UUIDs for all scenarios. These UUIDs will be part of any potential "accept" listening points.
+        // 4. Configure IpProviders and if any scenario needs it then allocate a unique URL per "accept"
+        //    and create a FQDN based on the "accepts" potential additional "path" (only for certain protocols, such as
+        //    HTTP based ones).
+
         // Note: these set of protcools are uniquely configured for the one single Scenario
         // and right now we are mixing concepts. The ScenarioSupervisors are kind of per
         // system but then we run a single scenario etc. Need to separate it all since
@@ -86,11 +94,6 @@ public final class Snice {
         latch.await(100, TimeUnit.MILLISECONDS);
         runScenario(scenario);
 
-        try {
-            Thread.sleep(1000);
-        } catch (final InterruptedException e) {
-            e.printStackTrace();
-        }
         return this;
     }
 
@@ -152,7 +155,9 @@ public final class Snice {
 
 
             try {
-                return new Snice(config, hektor, protocols, scenario).run();
+                final var snice = new Snice(config, hektor, protocols, scenario).run();
+                Thread.sleep(1000);
+                return snice;
             } catch (final Exception e) {
                 throw new RuntimeException("Unable to start Snice", e);
             }
@@ -178,8 +183,5 @@ public final class Snice {
             Arrays.stream(builders).map(Protocol.Builder::build).forEach(this.protocols::add);
             return this;
         }
-
     }
-
-
 }

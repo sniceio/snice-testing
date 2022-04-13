@@ -29,5 +29,10 @@ public class HttpCheckBuilder<T extends HttpMessage, X> {
         return new HttpMessageCheck<T, X>(extractor, matcher, Optional.empty());
     }
 
+    public HttpMessageCheck<T, X> not(final X expectedValue) {
+        final var matcher = new Matcher.NotMatcher<X>(expectedValue);
+        return new HttpMessageCheck<T, X>(extractor, matcher, Optional.empty());
+    }
+
 
 }

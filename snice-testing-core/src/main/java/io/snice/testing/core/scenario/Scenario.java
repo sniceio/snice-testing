@@ -1,6 +1,7 @@
 package io.snice.testing.core.scenario;
 
 import io.snice.functional.Either;
+import io.snice.identity.sri.ScenarioResourceIdentifier;
 import io.snice.testing.core.Execution;
 import io.snice.testing.core.MessageBuilder;
 import io.snice.testing.core.Session;
@@ -17,18 +18,26 @@ import java.util.stream.Collectors;
 import static io.snice.preconditions.PreConditions.assertNotEmpty;
 import static io.snice.preconditions.PreConditions.assertNotNull;
 
-public record Scenario(String name, List<ActionBuilder> actions) {
+public record Scenario(ScenarioResourceIdentifier uuid, String name, List<ActionBuilder> actions) {
 
     public Scenario(final String name) {
         this(name, List.of());
     }
 
     public Scenario(final String name, final List<ActionBuilder> actions) {
+        this(ScenarioResourceIdentifier.of(), name, actions);
+
+    }
+
+    public Scenario(final ScenarioResourceIdentifier uuid, final String name, final List<ActionBuilder> actions) {
+        assertNotNull(uuid, "You must specify the UUID for this scenario");
         assertNotEmpty(name, "You must specify a name for the scenario");
+        this.uuid = uuid;
         this.name = name;
         this.actions = actions == null ? List.of() : Collections.unmodifiableList(new ArrayList<>(actions));
     }
 
+    // TODO: no longer valid. Will do async stuff instead.
     public ParallelExecution.Builder executeInParallel() {
         return new ParallelExecution.Builder(List.of());
     }

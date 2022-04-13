@@ -195,6 +195,11 @@ public record InitiateHttpRequestDef(String requestName,
         }
 
         @Override
+        public InitiateHttpRequestBuilder content(final Map<String, Object> content) {
+            throw new RuntimeException("not yet implemented");
+        }
+
+        @Override
         public InitiateHttpRequestBuilder check(final Check<HttpResponse> check) {
             assertNotNull(check);
             return extendChecks(check);

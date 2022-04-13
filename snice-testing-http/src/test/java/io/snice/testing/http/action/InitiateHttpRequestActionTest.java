@@ -67,7 +67,7 @@ class InitiateHttpRequestActionTest extends TestBase {
      */
     @Test
     public void testRequestActionButNoTargetUri(@Mock final Action next) throws Exception {
-        final var action = new InitiateHttpRequestAction("Test", someHttpProtocol(), someHttpRequest(), next);
+        final var action = new InitiateHttpRequestAction("Test", someHttpProtocol(), someHttpRequestDef(), next);
         final List<Execution> executions = List.of();
         action.execute(executions, new Session("Testing"));
 
@@ -89,7 +89,7 @@ class InitiateHttpRequestActionTest extends TestBase {
         when(builder.build()).thenReturn(httpRequest);
         when(stack.newTransaction(httpRequest)).thenReturn(transactionBuilder);
 
-        final var def = someHttpRequest("http://example.com", "hello", "world");
+        final var def = someHttpRequestDef("http://example.com", "hello", "world");
         final var action = new InitiateHttpRequestAction("Test", someHttpProtocol(stack), def, next);
         final List<Execution> executions = List.of();
         action.execute(executions, new Session("Testing"));

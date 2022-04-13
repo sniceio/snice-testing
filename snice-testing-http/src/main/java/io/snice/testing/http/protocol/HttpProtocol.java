@@ -7,6 +7,7 @@ import io.snice.testing.http.HttpConfig;
 import io.snice.testing.http.protocol.impl.SniceHttpProtocol;
 import io.snice.testing.http.stack.HttpStack;
 
+import java.util.Map;
 import java.util.Optional;
 
 import static io.snice.preconditions.PreConditions.assertNotNull;
@@ -28,6 +29,14 @@ public interface HttpProtocol extends Protocol {
 
     interface HttpProtocolBuilder extends Protocol.Builder {
         HttpProtocolBuilder baseUrl(final String url);
+
+        /**
+         * Should probably have a noDefaults here. See comment in
+         * {@link io.snice.testing.http.InitiateHttpRequestBuilder#content(Map)} for comments
+         * and the reason why we probably need this.
+         * @return
+         */
+        // HttpProtocolBuilder noDefaults();
     }
 
 }

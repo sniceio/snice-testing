@@ -5,6 +5,8 @@ import io.snice.testing.core.MessageBuilder;
 import io.snice.testing.core.check.Check;
 import io.snice.testing.http.protocol.HttpProtocol;
 
+import java.util.Map;
+
 /**
  * A builder for specifying how to construct an HTTP request. The builder itself is immutable, which
  * means everytime a new value is added to the builder, a new instance is created. This allows for
@@ -40,6 +42,19 @@ public interface InitiateHttpRequestBuilder extends MessageBuilder {
      * @return
      */
     InitiateHttpRequestBuilder header(String name, String value);
+
+    /**
+     * Add form-encoded data with the outgoing request. By default,
+     * a <code>Content-Type</code> header of <code>application/x-www-form-urlencoded</code>
+     * will automatically be added to the request (as will the <code>Content-Length</code> header)
+     * <p>
+     * TODO: If you do not wish this default behavior to take place, simply call XXXX and then you are in full control yourself.
+     * TODO: Should probably add the noDefaults to the HttpProtocolBuilder.
+     *
+     * @param content
+     * @return
+     */
+    InitiateHttpRequestBuilder content(Map<String, Object> content);
 
     /**
      * Convenience method for adding the following two headers:
