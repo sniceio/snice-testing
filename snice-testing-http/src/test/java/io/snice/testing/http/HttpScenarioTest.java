@@ -1,6 +1,5 @@
 package io.snice.testing.http;
 
-import io.netty.util.NetUtil;
 import io.snice.codecs.codec.http.HttpMethod;
 import io.snice.testing.core.Snice;
 import io.snice.testing.core.SniceConfig;
@@ -18,7 +17,6 @@ public class HttpScenarioTest {
 
     @Test
     public void buildHttpBasicScenario() {
-        System.out.println("Is IPv4 stack preferred? " + NetUtil.isIpV4StackPreferred());
         final var config = new SniceConfig();
 
         final var port = 80;
@@ -55,13 +53,14 @@ public class HttpScenarioTest {
                 // .latch("hello_latch").countDown() // to use a latch
                 .check(status().is(200).saveAs("hello_status"));
 
-        final var scenario = scenario("Simple HTTP GET")
-                .execute(webhook)
-                // .latch("hello_latch").await() // to wait for a latch to open.
+        final var scenario = scenario("My First Scenario")
+                .executeAsync(webhook)
+                .execute(listRepos)
                 .execute(session -> {
                     System.err.println("Session variable: " + session.attributes("hello_status"));
                     return session.attributes("ops", "oh man").markAsFailed();
                 })
+                .join("Accept Webhook")
                 .execute(session -> session.attributes("hello", "world").markAsSucceeded());
 
 

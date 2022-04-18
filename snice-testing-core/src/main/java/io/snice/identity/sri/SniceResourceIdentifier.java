@@ -5,7 +5,10 @@ import io.snice.buffer.Buffers;
 
 import static io.snice.preconditions.PreConditions.assertArgument;
 
-public sealed interface SniceResourceIdentifier permits GenericResourceIdentifier, ScenarioResourceIdentifier, SessionResourceIdentifier {
+public sealed interface SniceResourceIdentifier permits ActionResourceIdentifier,
+        GenericResourceIdentifier,
+        ScenarioResourceIdentifier,
+        SessionResourceIdentifier {
 
     /**
      * The three character prefix.
@@ -30,7 +33,7 @@ public sealed interface SniceResourceIdentifier permits GenericResourceIdentifie
         return Buffers.uuid();
     }
 
-    sealed class BaseResourceIdentifier permits GenericResourceIdentifier, ScenarioResourceIdentifier, SessionResourceIdentifier {
+    sealed class BaseResourceIdentifier permits ActionResourceIdentifier, GenericResourceIdentifier, ScenarioResourceIdentifier, SessionResourceIdentifier {
 
         private final String prefix;
         private final Buffer uuid;

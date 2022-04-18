@@ -1,18 +1,32 @@
 package io.snice.testing.core.scenario.fsm;
 
-import io.snice.testing.core.Execution;
 import io.snice.testing.core.Session;
+import io.snice.testing.core.scenario.InternalActionBuilder;
+import io.snice.testing.core.scenario.Scenario;
 
 import java.util.List;
 
+import static io.snice.preconditions.PreConditions.assertNotNull;
+
 public interface ScenarioMessage {
 
-    record Init() {
+    record Init(Session session, Scenario scenario) implements ScenarioMessage {
+
+        public Init {
+            assertNotNull(session);
+            assertNotNull(scenario);
+        }
     }
 
-    record Exec(List<Execution> executions, Session session) {
+    record OkScenario() implements ScenarioMessage {
     }
 
-    record Terminate() {
+    record BadScenario(List<String> errors) implements ScenarioMessage {
+    }
+
+    record Exec(InternalActionBuilder action, Session session) implements ScenarioMessage {
+    }
+
+    record Terminate() implements ScenarioMessage {
     }
 }

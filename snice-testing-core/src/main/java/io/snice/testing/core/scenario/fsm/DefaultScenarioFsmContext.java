@@ -23,8 +23,15 @@ public record DefaultScenarioFsmContext(ActorRef parent,
     }
 
     @Override
+    public void tell(final ScenarioMessage msg) {
+        assertNotNull(msg);
+        ctx().self().tell(msg);
+    }
+
+    @Override
     public void processActionResult(final List<Execution> executions, final Session session) {
-        self.tell(new ScenarioMessage.Exec(executions, session));
+        System.err.println("Apparently processing the action result");
+        // self.tell(new ScenarioMessage.Exec(executions, session));
     }
 
     @Override
