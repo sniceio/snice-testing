@@ -3,9 +3,7 @@ package io.snice.testing.core.scenario.fsm;
 import io.hektor.fsm.Definition;
 import io.hektor.fsm.FSM;
 import io.snice.functional.Either;
-import io.snice.testing.core.Execution;
-import io.snice.testing.core.Session;
-import io.snice.testing.core.action.Action;
+import io.snice.identity.sri.ActionResourceIdentifier;
 import io.snice.testing.core.scenario.Scenario;
 
 import java.util.List;
@@ -13,6 +11,7 @@ import java.util.List;
 import static io.snice.testing.core.scenario.fsm.ScenarioState.ASYNC;
 import static io.snice.testing.core.scenario.fsm.ScenarioState.EXEC;
 import static io.snice.testing.core.scenario.fsm.ScenarioState.INIT;
+import static io.snice.testing.core.scenario.fsm.ScenarioState.JOIN;
 import static io.snice.testing.core.scenario.fsm.ScenarioState.SYNC;
 import static io.snice.testing.core.scenario.fsm.ScenarioState.TERMINATED;
 
@@ -56,8 +55,8 @@ public class ScenarioFsm {
         final var init = builder.withInitialState(INIT);
         final var exec = builder.withState(EXEC);
         final var sync = builder.withState(SYNC);
-        final var async = builder.withState(ASYNC);
-        // final var join = builder.withState(JOIN);
+        final var async = builder.withTransientState(ASYNC);
+        final var join = builder.withState(JOIN);
         final var terminated = builder.withFinalState(TERMINATED);
 
         init.transitionTo(INIT).onEvent(ScenarioMessage.Init.class).withAction(ScenarioFsm::onInit);
@@ -77,13 +76,18 @@ public class ScenarioFsm {
                 .withAction(ScenarioFsm::onExecute);
 
         // TODO: just so that we can build the scenario
+        // TODO: need to sit and wait in sync until the underlying ActionActor finishes or we timeout
         sync.transitionTo(EXEC).onEvent(String.class);
 
-        async.transitionTo(EXEC).asDefaultTransition().withAction(ScenarioFsm::onDefaultTransition);
+        async.transitionTo(EXEC).onEvent(ScenarioMessage.Exec.class).withGuard((msg, ctx, data) -> data.hasMoreActions());
+        async.transitionTo(JOIN).asDefaultTransition().withAction(ScenarioFsm::onDefaultTransition);
 
         exec.transitionTo(TERMINATED)
                 .onEvent(ScenarioMessage.Terminate.class)
                 .withAction(e -> System.err.println("terminated"));
+
+        // just so we can build the scenario
+        join.transitionTo(TERMINATED).onEvent(String.class);
 
         definition = builder.build();
     }
@@ -116,20 +120,29 @@ public class ScenarioFsm {
         return Either.right(scenario);
     }
 
+    /**
+     * Whenever we are asked to execute an action (sync or async - doesn't matter), we will call this method.
+     * The main purpose is to ask our context to prepare the execution of the action, which it does and is then
+     * wrapped in a "job", which we need to keep track of. Each job has a unique SRI - {@link ActionResourceIdentifier}
+     * and whenever a job is finished, we need to mark this job as done. The reason for this is a {@link Scenario}
+     * will never exit until all jobs (execution steps within the scenario) has been completed (success or failure,
+     * doesn't matter). This means that there will always be a JOIN at the end before we transition to TERMINATED.
+     * There may not be any action steps left to "join" on but we will still transition through that step. Keeps the FSM
+     * simpler and easier to test all possible paths.
+     */
     private static void onExecute(final ScenarioMessage.Exec exec, final ScenarioFsmContext ctx, final ScenarioData data) {
-        System.err.println("OnExecute: need to start new Action FSM. Async: " + exec.action().isAsync());
-        // action.execute(exec.executions(), exec.session());
-
-        // if async action, store async UUID. Perhaps we will do this alwyas? Even for sync it's just that it gets
-        // updated on that transition from SYNC back to EXEC? Seems better.
+        final var builder = exec.action();
+        final var session = exec.session();
+        final var job = ctx.prepareExecution(builder, session);
+        data.storeActionJob(job);
+        job.start();
     }
 
     /**
      * Whenever we enter the EXEC state we will fetch the next action and ask the {@link ScenarioFsmContext}
-     * to execute it.
-     *
-     * @param ctx
-     * @param data
+     * to execute it. As such, it is important that all state transitions that lead to the EXEC state are correct
+     * in that there are still actions to be executed. This is not checked here (except of course you'll get an
+     * exception). Unit tests should ensure all of this is true.
      */
     private static void onEnterExec(final ScenarioFsmContext ctx, final ScenarioData data) {
         final var action = data.nextAction();
@@ -151,21 +164,5 @@ public class ScenarioFsm {
         // TODO: this is an error. Deal with it.
     }
 
-    private static void onNoMoreActions(final ScenarioMessage.Exec exec, final ScenarioFsmContext ctx, final ScenarioData data) {
-        // ctx.processFinalResult(exec.executions(), exec.session());
-    }
-
-    /**
-     * This is how we "trap" the action of handing control back to us. Each {@link Action} is unaware of the
-     * actual execution environment and just calls "nextAction.execute", which is why we insert this "fake" action
-     * as the next action to execute.
-     */
-    private static record NextAction(String name, ScenarioFsmContext ctx) implements Action {
-
-        @Override
-        public void execute(final List<Execution> executions, final Session session) {
-            ctx.processActionResult(executions, session);
-        }
-    }
 
 }

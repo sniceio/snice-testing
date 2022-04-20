@@ -3,6 +3,7 @@ package io.snice.testing.core.scenario.fsm;
 import io.hektor.actors.LoggingSupport;
 import io.hektor.fsm.FSM;
 import io.hektor.fsm.TransitionListener;
+import io.snice.identity.sri.ActionResourceIdentifier;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.action.Action;
 import io.snice.testing.core.scenario.InternalActionBuilder;
@@ -121,6 +122,12 @@ public class ScenarioFsmTestBase implements LoggingSupport {
 
     protected static void assertTransition(final TransitionListener<ScenarioState> listener, final ScenarioState from, final ScenarioState to) {
         Mockito.verify(listener).onTransition(eq(from), eq(to), any());
+    }
+
+    public ActionJob someJob() {
+        final var job = mock(ActionJob.class);
+        when(job.sri()).thenReturn(ActionResourceIdentifier.of());
+        return job;
     }
 
     /**

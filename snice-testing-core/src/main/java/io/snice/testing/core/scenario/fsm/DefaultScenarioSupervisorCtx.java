@@ -35,7 +35,6 @@ public class DefaultScenarioSupervisorCtx implements ScenarioSupervisorCtx, FsmA
         final var scnActor = ctx().actorOf(scenario.uuid().asString(), props);
     }
 
-
     private Props configureScenarioFsm(final Session session, final Scenario scenario, final ScenarioContex scenarioContext) {
         final var scenarioData = new ScenarioData();
         final OnStartFunction<ScenarioFsmContext, ScenarioData> onStart = (actorCtx, ctx, data) -> {

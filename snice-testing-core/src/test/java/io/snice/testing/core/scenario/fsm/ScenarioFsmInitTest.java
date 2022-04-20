@@ -16,7 +16,8 @@ class ScenarioFsmInitTest extends ScenarioFsmTestBase {
 
     @Test
     public void testInit() {
-        fsm.onEvent(new ScenarioMessage.Init(newSession("Unit Test"), newScenario("Init")));
+        final var scenario = newScenario("Init");
+        fsm.onEvent(new ScenarioMessage.Init(newSession("Unit Test"), scenario));
         assertState(INIT);
         assertTransition(INIT, INIT);
 

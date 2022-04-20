@@ -1,10 +1,13 @@
 package io.snice.testing.core.scenario.fsm;
 
 import io.hektor.fsm.Data;
+import io.snice.identity.sri.ActionResourceIdentifier;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.scenario.InternalActionBuilder;
 import io.snice.testing.core.scenario.Scenario;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import static io.snice.preconditions.PreConditions.assertNotNull;
@@ -19,11 +22,17 @@ public class ScenarioData implements Data {
     private Optional<Scenario> scenario = Optional.empty();
     private int actionIndex = 0;
 
+    private final Map<ActionResourceIdentifier, ActionJob> jobs = new HashMap<>();
+
     public ScenarioData() {
     }
 
     public Session session() {
         return session;
+    }
+
+    public void storeActionJob(final ActionJob job) {
+        jobs.put(job.sri(), job);
     }
 
     public void scenario(final Scenario scenario) {

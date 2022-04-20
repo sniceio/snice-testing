@@ -1,15 +1,15 @@
 package io.snice.testing.core.scenario.fsm;
 
-import io.hektor.actors.fsm.FsmActorContextSupport;
 import io.hektor.fsm.Context;
 import io.snice.testing.core.Execution;
 import io.snice.testing.core.Session;
+import io.snice.testing.core.scenario.InternalActionBuilder;
 import io.snice.testing.core.scenario.Scenario;
 import io.snice.testing.core.scenario.ScenarioContex;
 
 import java.util.List;
 
-public interface ScenarioFsmContext extends Context, FsmActorContextSupport {
+public interface ScenarioFsmContext extends Context {
 
     /**
      * The {@link Scenario} that we are supposed to be running.
@@ -33,6 +33,17 @@ public interface ScenarioFsmContext extends Context, FsmActorContextSupport {
     // ActionResourceIdentifier executeSynchronously(Session session, InternalActionBuilder action);
 
     // ActionResourceIdentifier executeAsynchronously(Session session, InternalActionBuilder action);
+
+    /**
+     * Whenever a new action is supposed to be executed, it'll be executed as a separate "job" in a separate
+     * FSM and Actor. Ask the {@link ScenarioSupervisorCtx} to create such an {@link ActionJob} and once
+     * {@link ActionJob#start()} the execution will begin.
+     *
+     * @param action  the action builder that contains the action to eventually run.
+     * @param session the session to be used along with this job.
+     * @return a representation of the "job" that will take place elsewhere.
+     */
+    ActionJob prepareExecution(InternalActionBuilder action, Session session);
 
 
     /**
