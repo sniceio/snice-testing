@@ -2,8 +2,6 @@ package io.snice.testing.core.scenario.fsm;
 
 import io.hektor.actors.fsm.FsmActor;
 import io.hektor.actors.fsm.FsmActorContextSupport;
-import io.hektor.actors.fsm.OnStartFunction;
-import io.hektor.core.ActorContext;
 import io.hektor.core.ActorRef;
 import io.hektor.core.Props;
 import io.snice.identity.sri.ActionResourceIdentifier;
@@ -52,32 +50,28 @@ public record DefaultScenarioFsmContext(ActorRef parent,
         final var action = builder.build(scenarioContext, new NextAction("Next", this));
         final var sri = ActionResourceIdentifier.of();
 
-        final var props = configureActionFsm(session, action);
-        final var job = new ActionJobImpl(sri, props, ctx());
-        return job;
+        final var props = configureActionFsm();
+        final var actor = ctx().actorOf(sri.asString(), props);
+
+        return new ActionJobImpl(sri, session, action, actor);
     }
 
-    private record ActionJobImpl(ActionResourceIdentifier sri, Props props,
-                                 ActorContext actorContext) implements ActionJob {
+    private record ActionJobImpl(ActionResourceIdentifier sri, Session session, Action action,
+                                 ActorRef actor) implements ActionJob {
 
         @Override
         public void start() {
-            final var actionActor = actorContext.actorOf(sri.asString(), props);
+            actor.tell(new ActionMessage.StartAction(session, action));
         }
     }
 
-    private Props configureActionFsm(final Session session, final Action action) {
+    private Props configureActionFsm() {
         final var actionData = new ActionData();
         final var actionCtx = new DefaultActionContext();
-
-        final OnStartFunction<ActionContext, ActionData> onStart = (actorCtx, ctx, data) -> {
-            actorCtx.self().tell(new ActionMessage.StartAction(session, action));
-        };
 
         return FsmActor.of(ActionFsm.definition)
                 .withContext(actionCtx)
                 .withData(actionData)
-                .withStartFunction(onStart)
                 .build();
     }
 
