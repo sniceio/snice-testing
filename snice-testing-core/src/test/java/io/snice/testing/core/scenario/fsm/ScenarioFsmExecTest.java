@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -45,14 +46,34 @@ class ScenarioFsmExecTest extends ScenarioFsmTestBase {
         assertThat(exec.job(), notNullValue());
     }
 
-    /**
-     *
-     */
     @Test
     public void testExecAsync() {
         scenario = newAsyncScenario("Test Exec Sync");
         driveToInit(session, scenario);
         driveAsyncAction(session, scenario, 0);
+    }
+
+    @Test
+    public void testActionActorTerminated() {
+        final var exec = asyncScenario(session, 1).get(0);
+
+        // Do not "post" the NoMoreActions event just yet. An async job can complete
+        // and the underlying actor may die while we are in the EXEC state. Test that.
+        driveJobCompletes(exec, session);
+        driveActionActorTerminates(exec);
+
+        // Remember that there are no more actions left to execute
+        // and we already checked that as part of the scenario drive above.
+        // Hence, actually have to have the event processed by the FSM before
+        // we continue.
+        fsm.onEvent(new ScenarioMessage.NoMoreActions());
+
+
+        // should be nothing left to wrap-up at this point so we are terminating.
+        ensureAndFireEvent(new ScenarioMessage.Terminate());
+
+        assertState(ScenarioState.TERMINATED);
+        assertThat(fsm.isTerminated(), is(true));
     }
 
     /**

@@ -66,10 +66,8 @@ public class ScenarioFsm {
 
         exec.withEnterAction(ScenarioFsm::onEnterExec);
 
-        // Hmmm... we may have to change Hektor. Want this to execute always but when you
-        // go from A -> A (so just back to yourself), the enter action isn't triggered, which is
-        // by design. Perhaps add withAlwaysEnterAction, which would then always trigger including A -> A
         wrap.withEnterAction(ScenarioFsm::onEnterWrap);
+        wrap.withSelfEnterAction(ScenarioFsm::onEnterWrap);
 
         init.transitionTo(INIT).onEvent(ScenarioMessage.Init.class).withAction(ScenarioFsm::onInit);
 
@@ -89,6 +87,9 @@ public class ScenarioFsm {
         exec.transitionTo(EXEC)
                 .onEvent(ActionMessage.ActionFinished.class)
                 .withAction(ScenarioFsm::onActionFinished);
+
+        exec.transitionTo(EXEC).onEvent(LifecycleEvent.Terminated.class)
+                .withAction(ScenarioFsm::onActorTerminated);
 
         exec.transitionTo(WRAP).onEvent(ScenarioMessage.NoMoreActions.class);
 
@@ -121,9 +122,7 @@ public class ScenarioFsm {
         wrap.transitionTo(WRAP).onEvent(LifecycleEvent.Terminated.class)
                 .withAction(ScenarioFsm::onActorTerminated);
 
-        wrap.transitionTo(TERMINATED)
-                .onEvent(ScenarioMessage.Terminate.class)
-                .withAction(e -> System.err.println("terminated"));
+        wrap.transitionTo(TERMINATED).onEvent(ScenarioMessage.Terminate.class);
 
         // TODO:
         join.transitionTo(EXEC).onEvent(String.class);
@@ -224,11 +223,9 @@ public class ScenarioFsm {
      * final verdict.
      */
     private static void onEnterWrap(final ScenarioFsmContext ctx, final ScenarioData data) {
-        System.err.println("On Enter Wrap");
         if (data.isAllActionsDone()) {
-            System.err.println("YAY!!! All actions are completed");
+            ctx.tell(new ScenarioMessage.Terminate());
         }
-
     }
 
     /**

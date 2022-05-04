@@ -16,8 +16,18 @@ public record AcceptHttpRequestAction(String name,
     @Override
     public void execute(final List<Execution> executions, final Session session) {
         // TODO
-        System.err.println("Got to execute somehow");
-        next.execute(executions, session);
+        final var t = new Thread(() -> {
+            try {
+                System.err.println("Got to execute somehow but first I'll sleep 4 seconds");
+                Thread.sleep(4000);
+                System.err.println("Done sleeping so now moving to next action");
+                next.execute(executions, session);
+            } catch (final InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
+
+        t.start();
     }
 
 }

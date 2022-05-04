@@ -13,6 +13,7 @@ import io.snice.testing.core.action.Action;
 import io.snice.testing.core.scenario.InternalActionBuilder;
 import io.snice.testing.core.scenario.Scenario;
 import io.snice.testing.core.scenario.fsm.ScenarioMessage.Exec;
+import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.verification.VerificationMode;
@@ -270,6 +271,26 @@ public class ScenarioFsmTestBase implements LoggingSupport {
         final var actorPath = ActorPath.of(execInfo.sri().toString());
         final var terminated = LifecycleEvent.terminated(actorPath);
         fsm.onEvent(terminated);
+    }
+
+    /**
+     * Helper method to just ensure that the given event was "posted" on the context
+     * and then we feed it to the FSM
+     *
+     * @param event
+     */
+    protected void ensureAndFireEvent(final ScenarioMessage event) {
+        verify(ctx).tell(event);
+        fsm.onEvent(event);
+    }
+
+    /**
+     * Ensure that the FSM is in the {@link ScenarioState#TERMINATED} state and that the actual
+     * FSM is also marked as terminated.
+     */
+    protected void ensureFsmTerminated() {
+        assertState(ScenarioState.TERMINATED);
+        assertThat(fsm.isTerminated(), CoreMatchers.is(true));
     }
 
     /**

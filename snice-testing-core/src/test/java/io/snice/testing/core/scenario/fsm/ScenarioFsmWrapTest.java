@@ -1,7 +1,6 @@
 package io.snice.testing.core.scenario.fsm;
 
 import io.snice.testing.core.Session;
-import io.snice.testing.core.scenario.Scenario;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -12,7 +11,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 class ScenarioFsmWrapTest extends ScenarioFsmTestBase {
 
     private Session session;
-    private Scenario scenario;
 
     @Override
     @BeforeEach
@@ -22,7 +20,7 @@ class ScenarioFsmWrapTest extends ScenarioFsmTestBase {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {1})
+    @ValueSource(ints = {1, 2, 5})
     public void testWrapThingsUp(final int count) {
         final var execs = asyncScenario(session, count);
 
@@ -37,7 +35,9 @@ class ScenarioFsmWrapTest extends ScenarioFsmTestBase {
             driveJobCompletes(exec, session);
             driveActionActorTerminates(exec);
         }
+
+        // should be nothing left to wrap-up at this point so we are terminating.
+        ensureAndFireEvent(new ScenarioMessage.Terminate());
+        ensureFsmTerminated();
     }
-
-
 }
