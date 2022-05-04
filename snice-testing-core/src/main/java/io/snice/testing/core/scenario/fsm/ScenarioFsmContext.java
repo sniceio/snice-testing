@@ -1,13 +1,10 @@
 package io.snice.testing.core.scenario.fsm;
 
 import io.hektor.fsm.Context;
-import io.snice.testing.core.Execution;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.scenario.InternalActionBuilder;
 import io.snice.testing.core.scenario.Scenario;
 import io.snice.testing.core.scenario.ScenarioContex;
-
-import java.util.List;
 
 public interface ScenarioFsmContext extends Context {
 
@@ -29,10 +26,6 @@ public interface ScenarioFsmContext extends Context {
      * @param msg
      */
     void tell(ScenarioMessage msg);
-
-    // ActionResourceIdentifier executeSynchronously(Session session, InternalActionBuilder action);
-
-    // ActionResourceIdentifier executeAsynchronously(Session session, InternalActionBuilder action);
 
     /**
      * Whenever a new action is supposed to be executed, it'll be executed as a separate "job" in a separate
@@ -56,8 +49,5 @@ public interface ScenarioFsmContext extends Context {
      */
     // void scenarioNotOk();
 
-    void processActionResult(List<Execution> executions, Session session);
-
-    void processFinalResult(List<Execution> executions, Session session);
 
 }

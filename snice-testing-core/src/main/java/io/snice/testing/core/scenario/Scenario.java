@@ -1,6 +1,7 @@
 package io.snice.testing.core.scenario;
 
 import io.snice.functional.Either;
+import io.snice.identity.sri.ActionResourceIdentifier;
 import io.snice.identity.sri.ScenarioResourceIdentifier;
 import io.snice.testing.core.Execution;
 import io.snice.testing.core.MessageBuilder;
@@ -116,18 +117,19 @@ public record Scenario(ScenarioResourceIdentifier uuid, String name, List<Action
         return join((session, sessions) -> session, names);
     }
 
-    private static record InternalActionBuilderWrapper(BiFunction<ScenarioContex, Action, Action> builder,
+    private static record InternalActionBuilderWrapper(ActionResourceIdentifier sri,
                                                        boolean isAsync,
-                                                       boolean isScenario) implements InternalActionBuilder {
+                                                       boolean isScenario,
+                                                       BiFunction<ScenarioContex, Action, Action> builder) implements InternalActionBuilder {
 
         InternalActionBuilderWrapper {
             assertNotNull(builder);
         }
 
-
         InternalActionBuilderWrapper(final BiFunction<ScenarioContex, Action, Action> builder,
-                                     final boolean isAsync) {
-            this(builder, isAsync, false);
+                                     final boolean isAsync,
+                                     final boolean isScenario) {
+            this(ActionResourceIdentifier.of(), isAsync, isScenario, builder);
         }
 
         @Override

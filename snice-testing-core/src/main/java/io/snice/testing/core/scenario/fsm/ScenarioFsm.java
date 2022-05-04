@@ -1,9 +1,12 @@
 package io.snice.testing.core.scenario.fsm;
 
+import io.hektor.core.Actor;
+import io.hektor.core.LifecycleEvent;
 import io.hektor.fsm.Definition;
 import io.hektor.fsm.FSM;
 import io.snice.functional.Either;
 import io.snice.identity.sri.ActionResourceIdentifier;
+import io.snice.testing.core.action.Action;
 import io.snice.testing.core.scenario.Scenario;
 
 import java.util.List;
@@ -14,6 +17,7 @@ import static io.snice.testing.core.scenario.fsm.ScenarioState.INIT;
 import static io.snice.testing.core.scenario.fsm.ScenarioState.JOIN;
 import static io.snice.testing.core.scenario.fsm.ScenarioState.SYNC;
 import static io.snice.testing.core.scenario.fsm.ScenarioState.TERMINATED;
+import static io.snice.testing.core.scenario.fsm.ScenarioState.WRAP;
 
 /**
  * Implements the following FSM (plantuml, just to save it with the code, copy paste to plantuml.com)
@@ -57,14 +61,21 @@ public class ScenarioFsm {
         final var sync = builder.withState(SYNC);
         final var async = builder.withTransientState(ASYNC);
         final var join = builder.withState(JOIN);
+        final var wrap = builder.withState(WRAP);
         final var terminated = builder.withFinalState(TERMINATED);
+
+        exec.withEnterAction(ScenarioFsm::onEnterExec);
+
+        // Hmmm... we may have to change Hektor. Want this to execute always but when you
+        // go from A -> A (so just back to yourself), the enter action isn't triggered, which is
+        // by design. Perhaps add withAlwaysEnterAction, which would then always trigger including A -> A
+        wrap.withEnterAction(ScenarioFsm::onEnterWrap);
 
         init.transitionTo(INIT).onEvent(ScenarioMessage.Init.class).withAction(ScenarioFsm::onInit);
 
         init.transitionTo(EXEC).onEvent(ScenarioMessage.OkScenario.class);
         init.transitionTo(TERMINATED).onEvent(ScenarioMessage.BadScenario.class);
 
-        exec.withEnterAction(ScenarioFsm::onEnterExec);
 
         exec.transitionTo(ASYNC)
                 .onEvent(ScenarioMessage.Exec.class)
@@ -75,21 +86,60 @@ public class ScenarioFsm {
                 .onEvent(ScenarioMessage.Exec.class)
                 .withAction(ScenarioFsm::onExecute);
 
-        // TODO: just so that we can build the scenario
-        // TODO: need to sit and wait in sync until the underlying ActionActor finishes or we timeout
-        sync.transitionTo(EXEC).onEvent(String.class);
+        exec.transitionTo(EXEC)
+                .onEvent(ActionMessage.ActionFinished.class)
+                .withAction(ScenarioFsm::onActionFinished);
 
-        async.transitionTo(EXEC).onEvent(ScenarioMessage.Exec.class).withGuard((msg, ctx, data) -> data.hasMoreActions());
-        async.transitionTo(JOIN).asDefaultTransition().withAction(ScenarioFsm::onDefaultTransition);
+        exec.transitionTo(WRAP).onEvent(ScenarioMessage.NoMoreActions.class);
 
-        exec.transitionTo(TERMINATED)
+        sync.transitionTo(EXEC).onEvent(ActionMessage.ActionFinished.class)
+                .withGuard(ScenarioFsm::isOutstandingSynchronousActionGuard)
+                .withAction(ScenarioFsm::onActionFinished);
+
+        // Note that this MUST be defined after the above check whether the
+        // event is for a synchronous event or not. Or this will, since it is less restrictive (no guard),
+        // starve out the other one.
+        //
+        // TODO: perhaps also should catch any unknown jobs. Shouldn't happen but perhaps we want
+        // TODO: our FSM to handle it correctly. And also if it is a SYNC job but not the outstanding
+        // TODO: one that we are waiting on.
+        // TODO: Potential way to address them: unkown async job - refuse to process it. Transition via an "ERROR" state
+        // TODO: of some kind just so that it is easy to see we took that route.
+        // TODO: For parallel SYNC job, also refuse to start it (so different transition -> EXEC to SYNC) and also go via
+        // TODO: the ERROR state.
+        sync.transitionTo(SYNC).onEvent(ActionMessage.ActionFinished.class)
+                .withAction(ScenarioFsm::onActionFinished);
+
+        sync.transitionTo(SYNC).onEvent(LifecycleEvent.Terminated.class)
+                .withAction(ScenarioFsm::onActorTerminated);
+
+        async.transitionTo(EXEC).asDefaultTransition();
+
+        wrap.transitionTo(WRAP).onEvent(ActionMessage.ActionFinished.class)
+                .withAction(ScenarioFsm::onActionFinished);
+
+        wrap.transitionTo(WRAP).onEvent(LifecycleEvent.Terminated.class)
+                .withAction(ScenarioFsm::onActorTerminated);
+
+        wrap.transitionTo(TERMINATED)
                 .onEvent(ScenarioMessage.Terminate.class)
                 .withAction(e -> System.err.println("terminated"));
 
-        // just so we can build the scenario
-        join.transitionTo(TERMINATED).onEvent(String.class);
+        // TODO:
+        join.transitionTo(EXEC).onEvent(String.class);
 
         definition = builder.build();
+    }
+
+    /**
+     * While in the {@link ScenarioState#SYNC} state and we recieve an {@link ActionMessage.ActionFinished} message, we
+     * have to ensure that it is indeed for the "job" we are waiting to finish. Remember, there could be asynchyronous
+     * actions executing in parallel to the syncronous single job we are waiting for. As such, when transitioning
+     * away from the {@link ScenarioState#SYNC} back to the {@link ScenarioState#EXEC} phase we need to ensure
+     * we only do so when our synchronous action is finished.
+     */
+    private static boolean isOutstandingSynchronousActionGuard(final ActionMessage.ActionFinished msg, final ScenarioFsmContext ctx, final ScenarioData data) {
+        return data.isTheOutstandingSynchronousAction(msg.sri());
     }
 
     private static void onInit(final ScenarioMessage.Init init, final ScenarioFsmContext ctx, final ScenarioData data) {
@@ -138,6 +188,19 @@ public class ScenarioFsm {
         job.start();
     }
 
+    private static void onActionFinished(final ActionMessage.ActionFinished msg, final ScenarioFsmContext ctx, final ScenarioData data) {
+        data.processActionFinished(msg);
+    }
+
+    /**
+     * Not that this FSM actually cares but any {@link Action}s are executed within an {@link Actor} and when that
+     * actor terminates, the action is completely done and we take note of that (to ensure we don't leak Actors etc)
+     */
+    private static void onActorTerminated(final LifecycleEvent.Terminated msg, final ScenarioFsmContext ctx, final ScenarioData data) {
+        final var sri = ActionResourceIdentifier.from(msg.getActor().name());
+        data.processActionTerminated(sri);
+    }
+
     /**
      * Whenever we enter the EXEC state we will fetch the next action and ask the {@link ScenarioFsmContext}
      * to execute it. As such, it is important that all state transitions that lead to the EXEC state are correct
@@ -145,10 +208,27 @@ public class ScenarioFsm {
      * exception). Unit tests should ensure all of this is true.
      */
     private static void onEnterExec(final ScenarioFsmContext ctx, final ScenarioData data) {
-        final var action = data.nextAction();
-        final var session = data.session();
+        if (data.hasMoreActions()) {
+            final var action = data.nextAction();
+            final var session = data.session();
+            ctx.tell(new ScenarioMessage.Exec(action, session));
+        } else {
+            ctx.tell(new ScenarioMessage.NoMoreActions());
+        }
+    }
 
-        ctx.tell(new ScenarioMessage.Exec(action, session));
+    /**
+     * Whenever we enter the {@link ScenarioState#WRAP} state we will check if there actually are things
+     * to "wrap up". If all outstanding actions have finished and the underlying actor has terminated, we
+     * are all good. Once that happens, we will process all the executions and results etc and "compute" a
+     * final verdict.
+     */
+    private static void onEnterWrap(final ScenarioFsmContext ctx, final ScenarioData data) {
+        System.err.println("On Enter Wrap");
+        if (data.isAllActionsDone()) {
+            System.err.println("YAY!!! All actions are completed");
+        }
+
     }
 
     /**

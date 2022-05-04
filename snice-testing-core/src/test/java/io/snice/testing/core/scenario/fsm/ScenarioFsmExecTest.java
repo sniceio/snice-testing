@@ -1,18 +1,16 @@
 package io.snice.testing.core.scenario.fsm;
 
 import io.snice.testing.core.Session;
-import io.snice.testing.core.scenario.InternalActionBuilder;
 import io.snice.testing.core.scenario.Scenario;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
-import static io.snice.testing.core.scenario.fsm.ScenarioState.ASYNC;
-import static io.snice.testing.core.scenario.fsm.ScenarioState.EXEC;
-import static io.snice.testing.core.scenario.fsm.ScenarioState.JOIN;
-import static org.mockito.ArgumentMatchers.any;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 /**
  * Test all events that EXEC handles.
@@ -38,58 +36,45 @@ class ScenarioFsmExecTest extends ScenarioFsmTestBase {
     @Test
     public void testExecSync() {
         scenario = newScenario("Test Exec Sync");
-        driveToInit(session, scenario);
+        final var exec = driveToExec(session, scenario);
 
-        // As soon as we enter the EXEC state, it'll will (on the enter action) pop next action
-        // off the list and send an EXEC message to itself.
-        final var expectedAction = (InternalActionBuilder) scenario.actions().get(0);
-        final var execMsg = new ScenarioMessage.Exec(expectedAction, session);
-        verify(ctx).tell(execMsg);
-
-        // This is the job that will be created and "kicked-off". The job is just a container for
-        // an action.
-        final var job = someJob();
-        when(ctx.prepareExecution(eq(expectedAction), any(Session.class))).thenReturn(job);
-
-        // Now that we know that the FSM did ask the ctx to "tell" with the given message, drive the
-        // FSM using that very message. In the real execution environment, this would of course have been
-        // handled by the Actor framework but this is a unit test so we are driving manually.
-        fsm.onEvent(execMsg);
-
-        // since this was a synchronous event, we should be in the SYNC state since we will sit and wait for
-        // the action to finish (or for us to timeout)
-        assertState(ScenarioState.SYNC);
-
-        verify(job).start();
+        // just make sure that we are having all "parts" returned by the above and in all honesty,
+        // we're really mainly testing the actual test case itself but still...
+        assertThat(exec.execMsg(), notNullValue());
+        assertThat(exec.sri(), notNullValue());
+        assertThat(exec.job(), notNullValue());
     }
 
+    /**
+     *
+     */
     @Test
     public void testExecAsync() {
-        final var asyncAction = mockActionBuilder(true);
-        scenario = newScenario("Test Exec Sync", asyncAction);
+        scenario = newAsyncScenario("Test Exec Sync");
+        driveToInit(session, scenario);
+        driveAsyncAction(session, scenario, 0);
+    }
+
+    /**
+     * As actions are being kicked off, eventually we'll run out of actions to execute and
+     * at that point, we should see a {@link ScenarioMessage.NoMoreActions} message being
+     * submitted...
+     */
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 3, 10})
+    public void testNoMoreActions(final int count) {
+
+        final var actions = mockActionBuilder(count, true);
+        final var scenario = newScenario("NoMoreActionsTest-" + count, actions);
         driveToInit(session, scenario);
 
-        final var expectedAction = (InternalActionBuilder) scenario.actions().get(0);
-        final var execMsg = new ScenarioMessage.Exec(expectedAction, session);
-        verify(ctx).tell(execMsg);
+        for (int i = 0; i < count; ++i) {
+            final var exec = driveExec(session, scenario, i);
+            fsm.onEvent(exec.execMsg());
+        }
 
-        final var job = someJob();
-        when(ctx.prepareExecution(eq(expectedAction), any(Session.class))).thenReturn(job);
-
-        fsm.onEvent(execMsg);
-
-        // we end up in JOIN because there are no more actions to execute (this unit test
-        // only had a single async one) and we will not terminate the scenario until all
-        // actions have completed. And of course, since this is a transient state we should
-        // find ourselves traversing EXEC -> ASYNC -> JOIN so let's check that too
-        assertTransition(EXEC, ASYNC);
-        assertTransition(ASYNC, JOIN);
-        assertState(JOIN);
-
-        // ensure that the job was actually started since that is what actually
-        // kicks-off the actual job (duh - it's called start for a reason)
-        verify(job).start();
-
+        // since there are no more actions left, the EXEC state should state that and publish a NoMoreActions msg
+        verify(ctx).tell(eq(new ScenarioMessage.NoMoreActions()));
     }
 
 }

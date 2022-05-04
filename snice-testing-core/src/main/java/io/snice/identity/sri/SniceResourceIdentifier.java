@@ -3,6 +3,9 @@ package io.snice.identity.sri;
 import io.snice.buffer.Buffer;
 import io.snice.buffer.Buffers;
 
+import java.util.Objects;
+import java.util.function.Function;
+
 import static io.snice.preconditions.PreConditions.assertArgument;
 
 public sealed interface SniceResourceIdentifier permits ActionResourceIdentifier,
@@ -41,6 +44,34 @@ public sealed interface SniceResourceIdentifier permits ActionResourceIdentifier
         protected BaseResourceIdentifier(final String prefix, final Buffer uuid) {
             this.prefix = prefix;
             this.uuid = uuid;
+        }
+
+        @Override
+        public boolean equals(final Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            final BaseResourceIdentifier that = (BaseResourceIdentifier) o;
+            return uuid.equals(that.uuid);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(uuid);
+        }
+
+        protected static <T extends SniceResourceIdentifier> T from(final String expectedPrefix, final String raw, final Function<Buffer, T> builder) {
+            // TODO: lots of checks needs to be done.
+            if (raw == null || raw.length() != 32 + expectedPrefix.length()) {
+                throw new IllegalArgumentException("The SRI is not exactly " + (32 + expectedPrefix.length())
+                        + " characters long. Cannot be a proper SRI");
+            }
+
+            if (raw.startsWith(expectedPrefix)) {
+                final var buffer = Buffers.wrapAsHex(raw.substring(expectedPrefix.length(), raw.length()));
+                return builder.apply(buffer);
+            }
+
+            throw new IllegalArgumentException("The given raw string is not a valid SRI");
         }
 
         public String prefix() {

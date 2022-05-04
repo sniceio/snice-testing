@@ -15,6 +15,10 @@ public final class ActionResourceIdentifier extends SniceResourceIdentifier.Base
         super(PREFIX, raw);
     }
 
+    public static ActionResourceIdentifier from(final String sri) {
+        return from(PREFIX, sri, ActionResourceIdentifier::new);
+    }
+
     public static ActionResourceIdentifier of() {
         return new ActionResourceIdentifier(SniceResourceIdentifier.uuid());
     }
