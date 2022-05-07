@@ -6,6 +6,8 @@ import io.snice.testing.core.common.Expression;
 import io.snice.testing.core.protocol.ProtocolRegistry;
 import io.snice.testing.http.HttpConfig;
 import io.snice.testing.http.protocol.HttpProtocol;
+import io.snice.testing.http.stack.HttpStack;
+import io.snice.testing.http.stack.HttpStackUserConfig;
 import io.snice.testing.http.stack.impl.SniceHttpStack;
 
 import java.util.Optional;
@@ -39,6 +41,10 @@ public record SniceHttpProtocol(HttpConfig config,
         stack.stop();
     }
 
+    @Override
+    public HttpStack newStack(final HttpStackUserConfig config) {
+        return stack.newStack(config);
+    }
 
     private static class SniceNetworkingHttpBuilder implements HttpProtocolBuilder {
 

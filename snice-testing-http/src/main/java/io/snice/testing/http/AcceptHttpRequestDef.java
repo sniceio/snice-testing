@@ -5,6 +5,7 @@ import io.snice.codecs.codec.http.HttpRequest;
 import io.snice.testing.core.check.Check;
 import io.snice.testing.core.common.Expression;
 import io.snice.testing.http.impl.AcceptHttpRequestBuilderImpl;
+import io.snice.testing.http.stack.HttpStackUserConfig;
 
 import java.util.List;
 import java.util.Map;
@@ -22,7 +23,8 @@ public record AcceptHttpRequestDef(String requestName,
                                    String reasonPhrase,
                                    Map<String, Expression> headers,
                                    List<Check<HttpRequest>> checks,
-                                   String saveAs) {
+                                   String saveAs,
+                                   HttpStackUserConfig config) {
 
     public static AcceptHttpRequestBuilder of(final String requestName, final HttpMethod method, final String uri, final String saveAs) {
         final var builder = AcceptHttpRequestBuilderImpl.of(requestName, method, uri);

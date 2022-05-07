@@ -17,7 +17,8 @@ public record InitiateHttpRequestActionBuilder(InitiateHttpRequestBuilder builde
     @Override
     public Action build(final ScenarioContex ctx, final Action next) {
         final var protocol = (HttpProtocol) ctx.registry().protocol(HttpProtocol.httpProtocolKey).orElseThrow(() -> new IllegalArgumentException("HTTP Protocol has not been configured"));
-        final var httpRequestDef = builder.build();
-        return new InitiateHttpRequestAction(httpRequestDef.requestName(), protocol, httpRequestDef, next);
+        final var def = builder.build();
+        final var stack = protocol.newStack(def.config());
+        return new InitiateHttpRequestAction(def.requestName(), protocol, stack, def, next);
     }
 }

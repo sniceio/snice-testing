@@ -55,12 +55,12 @@ public class HttpScenarioTest {
 
         final var scenario = scenario("My First Scenario")
                 .executeAsync(webhook)
-                .execute(listRepos);
-                /*
                 .execute(session -> {
-                    System.err.println("Session variable: " + session.attributes("hello_status"));
+                    System.err.println("Webhook: " + session.attributes("my webhook"));
                     return session.attributes("ops", "oh man").markAsFailed();
                 })
+                .execute(listRepos);
+                /*
                 .join("Accept Webhook")
                 .execute(session -> session.attributes("hello", "world").markAsSucceeded());
                  */

@@ -70,7 +70,7 @@ public class AcceptHttpRequestDefTest extends TestBase {
 
         assertThat(def.saveAs(), is("unit_test"));
         assertHeaders(def.headers(), "apa", "monkey", "nisse", "hello");
-        assertThat(def.checks().size(), is(1));
+        assertThat(def.checks().size(), is(2));
     }
 
 }

@@ -8,6 +8,7 @@ import io.snice.networking.http.impl.NettyHttpMessageFactory;
 import io.snice.testing.core.common.Expression;
 import io.snice.testing.http.protocol.HttpProtocol;
 import io.snice.testing.http.stack.HttpStack;
+import io.snice.testing.http.stack.HttpStackUserConfig;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 
@@ -20,6 +21,7 @@ import java.util.Optional;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -46,7 +48,7 @@ public class TestBase {
         final var protocol = mock(HttpProtocol.class);
         when(protocol.baseUrl()).thenReturn(Optional.ofNullable(baseUrl == null ? null : Expression.of(baseUrl)));
         if (stack != null) {
-            when(protocol.stack()).thenReturn(stack);
+            when(protocol.newStack(any())).thenReturn(stack);
         }
 
         return protocol;
@@ -84,7 +86,8 @@ public class TestBase {
         for (int i = 0; i < headers.length; i += 2) {
             map.put(headers[i], Expression.of(headers[i + 1]));
         }
-        return new InitiateHttpRequestDef("Unit Testing", HttpMethod.GET, List.of(), baseExp, null, map);
+        final var config = new HttpStackUserConfig();
+        return new InitiateHttpRequestDef("Unit Testing", HttpMethod.GET, List.of(), baseExp, null, map, config);
     }
 
     /**

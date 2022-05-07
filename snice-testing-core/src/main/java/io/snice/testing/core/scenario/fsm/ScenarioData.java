@@ -23,6 +23,7 @@ public class ScenarioData implements Data {
      * next ask to execute a new action. I.e. through the {@link ScenarioMessage.Exec} message.
      */
     private Session session;
+
     private Optional<Scenario> scenario = Optional.empty();
     private int actionIndex = 0;
 
@@ -94,6 +95,10 @@ public class ScenarioData implements Data {
 
     public boolean isTheOutstandingSynchronousAction(final ActionResourceIdentifier sri) {
         return outstandingSyncAction.map(s -> s.equals(sri)).orElse(false);
+    }
+
+    public void clearOutstandingSynchronousJob() {
+        outstandingSyncAction = Optional.empty();
     }
 
     public void scenario(final Scenario scenario) {

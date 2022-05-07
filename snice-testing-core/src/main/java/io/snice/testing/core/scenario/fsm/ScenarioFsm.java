@@ -12,6 +12,7 @@ import io.snice.testing.core.scenario.Scenario;
 import java.util.List;
 
 import static io.snice.testing.core.scenario.fsm.ScenarioState.ASYNC;
+import static io.snice.testing.core.scenario.fsm.ScenarioState.ERROR;
 import static io.snice.testing.core.scenario.fsm.ScenarioState.EXEC;
 import static io.snice.testing.core.scenario.fsm.ScenarioState.INIT;
 import static io.snice.testing.core.scenario.fsm.ScenarioState.JOIN;
@@ -62,6 +63,7 @@ public class ScenarioFsm {
         final var async = builder.withTransientState(ASYNC);
         final var join = builder.withState(JOIN);
         final var wrap = builder.withState(WRAP);
+        final var error = builder.withTransientState(ERROR);
         final var terminated = builder.withFinalState(TERMINATED);
 
         exec.withEnterAction(ScenarioFsm::onEnterExec);
@@ -93,9 +95,14 @@ public class ScenarioFsm {
 
         exec.transitionTo(WRAP).onEvent(ScenarioMessage.NoMoreActions.class);
 
+        sync.transitionTo(ERROR).onEvent(ActionMessage.ActionFinished.class)
+                .withGuard(ScenarioFsm::isUnknownAction)
+                .withTransformation(actionFinished -> SYNC.toString())
+                .withAction((evt, ctx, data) -> onUnknownJob(SYNC, evt, ctx));
+
         sync.transitionTo(EXEC).onEvent(ActionMessage.ActionFinished.class)
                 .withGuard(ScenarioFsm::isOutstandingSynchronousActionGuard)
-                .withAction(ScenarioFsm::onActionFinished);
+                .withAction(ScenarioFsm::onSyncActionFinished);
 
         // Note that this MUST be defined after the above check whether the
         // event is for a synchronous event or not. Or this will, since it is less restrictive (no guard),
@@ -124,6 +131,13 @@ public class ScenarioFsm {
 
         wrap.transitionTo(TERMINATED).onEvent(ScenarioMessage.Terminate.class);
 
+        // The ERROR state is a transient state whose only purpose is to show in the state transitions
+        // that an error occurred. It will always transition back to the state from where it came, which
+        // is managed by the original state doing a transformation of the original message to a string
+        // which we'll map on below.
+        error.transitionTo(SYNC).onEvent(String.class).withGuard(SYNC.toString()::equals);
+        error.transitionTo(EXEC).asDefaultTransition();
+
         // TODO:
         join.transitionTo(EXEC).onEvent(String.class);
 
@@ -139,6 +153,15 @@ public class ScenarioFsm {
      */
     private static boolean isOutstandingSynchronousActionGuard(final ActionMessage.ActionFinished msg, final ScenarioFsmContext ctx, final ScenarioData data) {
         return data.isTheOutstandingSynchronousAction(msg.sri());
+    }
+
+    private static boolean isUnknownAction(final ActionMessage.ActionFinished msg, final ScenarioFsmContext ctx, final ScenarioData data) {
+        return !data.isKnownJob(msg.sri());
+    }
+
+    private static void onUnknownJob(final ScenarioState state, final ActionMessage.ActionFinished msg, final ScenarioFsmContext ctx) {
+        final var error = new ScenarioMessage.ErrorAction(state, msg);
+        ctx.reportError(error);
     }
 
     private static void onInit(final ScenarioMessage.Init init, final ScenarioFsmContext ctx, final ScenarioData data) {
@@ -182,9 +205,28 @@ public class ScenarioFsm {
     private static void onExecute(final ScenarioMessage.Exec exec, final ScenarioFsmContext ctx, final ScenarioData data) {
         final var builder = exec.action();
         final var session = exec.session();
+
         final var job = ctx.prepareExecution(builder, session);
         data.storeActionJob(job);
+
+        // Note that we need to make the potential updated session the "latest and greatest" in case the Action
+        // we are about to execute is an async action and as such, the ActionBuilder may have updated the session
+        // with the FQDN of where the listening point is.
+        data.session(job.session());
         job.start();
+    }
+
+    /**
+     * The only difference between a synchronous job finishing and an async one is that there can only be a single
+     * synchronous job running at any given point in time and there is a guard on the FSM that ensures this. As such,
+     * we also need to clear out the outstanding synchronous job since it just completed (duh).
+     * <p>
+     * Note: we RELY on the FSM setup properly so there is no additional check to see if the {@link ActionMessage.ActionFinished}
+     * message is indeed for the outstanding action. If we mess up we'll have an issue but that's why we have unit tests...
+     */
+    private static void onSyncActionFinished(final ActionMessage.ActionFinished msg, final ScenarioFsmContext ctx, final ScenarioData data) {
+        data.clearOutstandingSynchronousJob();
+        onActionFinished(msg, ctx, data);
     }
 
     private static void onActionFinished(final ActionMessage.ActionFinished msg, final ScenarioFsmContext ctx, final ScenarioData data) {

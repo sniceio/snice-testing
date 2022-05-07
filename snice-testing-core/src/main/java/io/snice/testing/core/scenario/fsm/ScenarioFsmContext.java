@@ -38,16 +38,6 @@ public interface ScenarioFsmContext extends Context {
      */
     ActionJob prepareExecution(InternalActionBuilder action, Session session);
 
-
-    /**
-     * Signal that the {@link Scenario} has been validated and is ok to actually execute.
-     */
-    // void scenarioOk();
-
-    /**
-     * Signal that the {@link Scenario} has been validated and is NOT ok to actually execute.
-     */
-    // void scenarioNotOk();
-
+    void reportError(ScenarioMessage.ErrorAction error);
 
 }

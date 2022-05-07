@@ -72,6 +72,19 @@ public record Session(SessionResourceIdentifier uuid,
         return Optional.ofNullable(attributes.get(name));
     }
 
+    /**
+     * Update the {@link Session} with all the given attributes.
+     */
+    public Session attributes(final Map<String, Object> attributes) {
+        if (attributes == null || attributes.isEmpty()) {
+            return this;
+        }
+
+        final var newAttributes = new HashMap<>(this.attributes);
+        newAttributes.putAll(attributes);
+        return new Session(uuid, name, status, newAttributes);
+    }
+
     public Session attributes(final String name, final Object value) {
         return new Session(uuid, name, status, extendAttributes(name, value));
     }

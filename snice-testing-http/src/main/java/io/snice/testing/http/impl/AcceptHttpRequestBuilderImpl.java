@@ -9,6 +9,7 @@ import io.snice.testing.http.AcceptHttpRequestBuilder;
 import io.snice.testing.http.AcceptHttpRequestDef;
 import io.snice.testing.http.HttpMessageDefBuilder;
 import io.snice.testing.http.action.AcceptHttpRequestActionBuilder;
+import io.snice.testing.http.stack.HttpStackUserConfig;
 
 import java.util.List;
 import java.util.Map;
@@ -59,7 +60,9 @@ public final class AcceptHttpRequestBuilderImpl extends HttpMessageDefBuilderBas
         final var statusCode = ofNullable((Integer) values.get(STATUS_CODE_KEY)).orElse(200);
         final var reasonPhrase = ofNullable((String) values.get(REASON_PHRASE_KEY)).orElse("OK");
 
-        return new AcceptHttpRequestDef(name, method, target, statusCode, reasonPhrase, headers, checks, saveAs);
+        // TODO
+        final var config = new HttpStackUserConfig();
+        return new AcceptHttpRequestDef(name, method, target, statusCode, reasonPhrase, headers, checks, saveAs, config);
     }
 
     @Override

@@ -1,10 +1,16 @@
 package io.snice.testing.core.scenario.fsm;
 
+import io.snice.identity.sri.ActionResourceIdentifier;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.scenario.Scenario;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
+import java.util.List;
+
+import static io.snice.testing.core.scenario.fsm.ScenarioState.ERROR;
 import static io.snice.testing.core.scenario.fsm.ScenarioState.EXEC;
 import static io.snice.testing.core.scenario.fsm.ScenarioState.SYNC;
 import static org.mockito.Mockito.verify;
@@ -33,6 +39,64 @@ class ScenarioFsmSyncTest extends ScenarioFsmTestBase {
         final var exec = driveToExec(session, scenario);
         driveToSync(exec);
         driveSyncJobCompletes(exec, session);
+    }
+
+    /**
+     * Ensure that we are able to execute many sync jobs after each other. The main thing
+     * here is that if we don't correctly clear out the outstanding synchronous action/job, we
+     * should not be able to start another synchronous job since only one can be active at any given
+     * point in time.
+     */
+    @ParameterizedTest
+    @ValueSource(ints = {2, 3, 5})
+    public void testScenarioWithManySyncActions(final int count) {
+        final var actions = mockActionBuilder(count, false);
+        final var scenario = newScenario("Many Sync Actions", actions);
+
+        driveToInit(session, scenario);
+
+        for (int i = 0; i < count; ++i) {
+            final var exec = driveExec(session, scenario, i);
+            driveToSync(exec);
+            driveJobCompletes(exec, exec.job().session());
+            assertState(EXEC);
+        }
+
+        verify(ctx).tell(new ScenarioMessage.NoMoreActions());
+    }
+
+    /**
+     * If there is a bug and we somehow manage to process, or emit, the wrong {@link ActionMessage.ActionFinished} message
+     * then the FSM should detect this, complain but continue.
+     */
+    @Test
+    public void testOutstandingSyncAndThenWrongSyncJobCompletes() {
+        final var sync = mockActionBuilder(false);
+        final var scenario = newScenario("Many Sync Actions", sync);
+        driveToInit(session, scenario);
+
+        final var exec = driveExec(session, scenario, 0);
+        driveToSync(exec);
+
+        // Now, instead of driving the given job to completion, let's fake it and post
+        // the wrong (a made up one) ActionFinished message. If this ever were to happen, there
+        // is a bug in the execution environment, and we'll need to fix it. But, we shouldn't kill
+        // the current running scenario, which is why this error handling exists.
+        final var wrongSri = ActionResourceIdentifier.of();
+        final var wrongSession = new Session("Random Wrong Session");
+        final var wrongActionFinished = new ActionMessage.ActionFinished(wrongSri, wrongSession, List.of());
+        fsm.onEvent(wrongActionFinished);
+
+        // ensure we transitioned through the ERROR state and also reported that error on the context
+        assertTransition(SYNC, ERROR);
+        assertTransition(ERROR, SYNC);
+        verify(ctx).reportError(new ScenarioMessage.ErrorAction(SYNC, wrongActionFinished));
+
+        // and now finish off the real job.
+        driveJobCompletes(exec, exec.job().session());
+        assertState(EXEC);
+
+        verify(ctx).tell(new ScenarioMessage.NoMoreActions());
     }
 
     /**

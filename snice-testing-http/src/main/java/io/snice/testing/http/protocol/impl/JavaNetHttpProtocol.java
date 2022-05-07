@@ -7,6 +7,8 @@ import io.snice.testing.core.protocol.ProtocolRegistry;
 import io.snice.testing.http.HttpConfig;
 import io.snice.testing.http.codec.JavaNetHttpMessageFactory;
 import io.snice.testing.http.protocol.HttpProtocol;
+import io.snice.testing.http.stack.HttpStack;
+import io.snice.testing.http.stack.HttpStackUserConfig;
 import io.snice.testing.http.stack.impl.JavaNetHttpStack;
 
 import java.net.http.HttpClient;
@@ -31,6 +33,13 @@ public record JavaNetHttpProtocol(HttpConfig config,
     @Override
     public void stop() {
         stack.stop();
+    }
+
+    @Override
+    public HttpStack newStack(final HttpStackUserConfig config) {
+        // This implementation doesn't handle this properly and was only used for early testing.
+        // Don't use in production.
+        return stack;
     }
 
     private static class JavaNetBuilder implements HttpProtocolBuilder {

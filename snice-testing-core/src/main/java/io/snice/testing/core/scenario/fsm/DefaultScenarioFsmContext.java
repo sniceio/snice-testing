@@ -39,10 +39,16 @@ public record DefaultScenarioFsmContext(ActorRef parent,
         final var props = configureActionFsm();
         final var actor = ctx().actorOf(builder.sri().asString(), props);
 
-        final var action = builder.build(scenarioContext, new NextAction("Next", actor, builder.sri()));
+        final var action = builder.build(scenarioContext, new NextAction("TrapAction", actor, builder.sri()));
+        final var newSession = session.attributes(action.attributes());
 
 
-        return new ActionJobImpl(builder.sri(), builder.isAsync(), session, action, actor);
+        return new ActionJobImpl(builder.sri(), builder.isAsync(), newSession, action, actor);
+    }
+
+    @Override
+    public void reportError(final ScenarioMessage.ErrorAction error) {
+        // TODO: do something about this. Probably just log it, stats etc.
     }
 
     private record ActionJobImpl(ActionResourceIdentifier sri, boolean isAsync, Session session, Action action,

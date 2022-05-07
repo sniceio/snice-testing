@@ -4,13 +4,15 @@ import io.snice.testing.core.Execution;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.action.Action;
 import io.snice.testing.http.AcceptHttpRequestDef;
-import io.snice.testing.http.protocol.HttpProtocol;
+import io.snice.testing.http.stack.HttpStack;
 
 import java.util.List;
+import java.util.Map;
 
 public record AcceptHttpRequestAction(String name,
-                                      HttpProtocol http,
+                                      HttpStack stack,
                                       AcceptHttpRequestDef def,
+                                      Map<String, Object> attributes,
                                       Action next) implements Action {
 
     @Override

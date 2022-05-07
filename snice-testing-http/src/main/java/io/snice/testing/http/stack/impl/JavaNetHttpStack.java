@@ -6,7 +6,9 @@ import io.snice.testing.http.codec.JavaNetHttpRequest;
 import io.snice.testing.http.codec.JavaNetHttpResponse;
 import io.snice.testing.http.protocol.HttpTransaction;
 import io.snice.testing.http.stack.HttpStack;
+import io.snice.testing.http.stack.HttpStackUserConfig;
 
+import java.net.URL;
 import java.net.http.HttpClient;
 import java.util.function.BiConsumer;
 
@@ -22,6 +24,11 @@ public record JavaNetHttpStack(HttpClient client) implements HttpStack {
     }
 
     @Override
+    public HttpStackUserConfig config() {
+        throw new RuntimeException("Dont use this class. Will soon be removed");
+    }
+
+    @Override
     public HttpTransaction.Builder newTransaction(final HttpRequest request) {
         try {
             assertNotNull(request);
@@ -31,6 +38,11 @@ public record JavaNetHttpStack(HttpClient client) implements HttpStack {
                     "not the expected implementation, which should be impossible so there must be a bug. " +
                     "Expected class " + JavaNetHttpRequest.class.getName() + " but got " + request.getClass().getName());
         }
+    }
+
+    @Override
+    public URL address() {
+        throw new RuntimeException("Dont use this class. Will soon be removed");
     }
 
     public void start() {

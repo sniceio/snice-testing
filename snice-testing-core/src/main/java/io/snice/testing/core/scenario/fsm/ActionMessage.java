@@ -7,17 +7,19 @@ import io.snice.testing.core.action.Action;
 
 import java.util.List;
 
-public interface ActionMessage {
+public sealed interface ActionMessage {
 
     /**
      * Message used to kick-off the execution of an {@link Action} within the {@link ActionFsm}.
      */
-    record StartAction(Session session, Action action) {
+    record StartAction(Session session, Action action) implements ActionMessage {
     }
 
     /**
      * Message to signal that an action has finished executing.
      */
-    record ActionFinished(ActionResourceIdentifier sri, Session session, List<Execution> executions) {
+    record ActionFinished(ActionResourceIdentifier sri, Session session,
+                          List<Execution> executions) implements ActionMessage {
     }
+
 }

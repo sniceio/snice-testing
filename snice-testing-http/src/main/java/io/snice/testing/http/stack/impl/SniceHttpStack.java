@@ -13,14 +13,17 @@ import io.snice.networking.http.event.HttpMessageEvent;
 import io.snice.testing.http.HttpConfig;
 import io.snice.testing.http.protocol.HttpTransaction;
 import io.snice.testing.http.stack.HttpStack;
+import io.snice.testing.http.stack.HttpStackUserConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.function.BiConsumer;
 
 import static io.snice.preconditions.PreConditions.assertNotNull;
 
-public class SniceHttpStack extends HttpApplication<HttpConfig> implements HttpStack {
+public class SniceHttpStack extends HttpApplication<HttpConfig> {
 
     private static final Logger logger = LoggerFactory.getLogger(SniceHttpStack.class);
 
@@ -34,12 +37,25 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> implements HttpS
         });
     }
 
+    public HttpStack newStack(final HttpStackUserConfig config) {
+        assertNotNull(config);
+        final var address = getUrl();
+        return new HttpStackWrapper(config, this, address);
+    }
+
+    private URL getUrl() {
+        try {
+            return new URL("http://localhost:7777");
+        } catch (final MalformedURLException e) {
+            throw new IllegalArgumentException(e);
+        }
+    }
+
     @Override
     public void run(final HttpConfig configuration, final HttpEnvironment<HttpConfig> environment) {
         env = environment;
     }
 
-    @Override
     public HttpTransaction.Builder newTransaction(final HttpRequest request) {
         assertNotNull(request);
         return new HttpTransactionBuilder(env, request);
@@ -55,6 +71,16 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> implements HttpS
         final var resp = event.getHttpResponse();
         System.err.println("Received HTTP response outside of a Transaction: " + resp.statusCode() + " " + resp.reasonPhrase());
         resp.headers().forEach(System.err::println);
+    }
+
+    private static record HttpStackWrapper(HttpStackUserConfig config,
+                                           SniceHttpStack actualStack,
+                                           URL address) implements HttpStack {
+
+        @Override
+        public HttpTransaction.Builder newTransaction(final HttpRequest request) {
+            return actualStack.newTransaction(request);
+        }
     }
 
     private static class HttpTransactionBuilder implements HttpTransaction.Builder {

@@ -9,6 +9,7 @@ import io.snice.testing.core.check.Check;
 import io.snice.testing.core.common.Expression;
 import io.snice.testing.http.action.InitiateHttpRequestActionBuilder;
 import io.snice.testing.http.protocol.HttpProtocol;
+import io.snice.testing.http.stack.HttpStackUserConfig;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -31,7 +32,8 @@ public record InitiateHttpRequestDef(String requestName,
                                      List<Check<HttpResponse>> checks,
                                      Optional<Expression> baseUrl,
                                      Optional<Expression> uri,
-                                     Map<String, Expression> headers) {
+                                     Map<String, Expression> headers,
+                                     HttpStackUserConfig config) {
 
     public InitiateHttpRequestDef {
         assertNotEmpty(requestName, "The HTTP request must have a name");
@@ -42,7 +44,7 @@ public record InitiateHttpRequestDef(String requestName,
     }
 
     public InitiateHttpRequestDef(final String requestName, final HttpMethod method) {
-        this(requestName, method, List.of(), null, null, null);
+        this(requestName, method, List.of(), null, null, null, null);
     }
 
     public static InitiateHttpRequestBuilder of(final String requestName, final HttpMethod method, final String uri) {
@@ -114,6 +116,8 @@ public record InitiateHttpRequestDef(String requestName,
 
         private static final String CHECKS_KEY = "CHECKS";
 
+        private static final String STACK_USER_CONFIG_KEY = "STACK_USER_CONFIG";
+
         /**
          * There is no good way for incremental building up an immutable object in java that doesn't
          * involve calling a constructor over and over with a massive argument list. Scala has
@@ -134,6 +138,7 @@ public record InitiateHttpRequestDef(String requestName,
             values.put(HEADERS_KEY, Collections.unmodifiableMap(new HashMap<String, Expression>()));
             values.put(METHOD_KEY, method);
             values.put(CHECKS_KEY, List.of());
+
             if (uri != null && !uri.isEmpty()) {
                 values.put(PATH_KEY, Expression.of(uri));
             }
@@ -216,7 +221,9 @@ public record InitiateHttpRequestDef(String requestName,
 
             assertNotNull(method, "You must specify the method of the request");
 
-            return new InitiateHttpRequestDef(requestName, method, checks, Optional.ofNullable(baseUrl), Optional.ofNullable(target), headers);
+            // TODO
+            final var config = new HttpStackUserConfig();
+            return new InitiateHttpRequestDef(requestName, method, checks, Optional.ofNullable(baseUrl), Optional.ofNullable(target), headers, config);
         }
 
         @Override

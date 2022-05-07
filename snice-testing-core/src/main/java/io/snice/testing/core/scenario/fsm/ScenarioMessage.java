@@ -32,6 +32,15 @@ public interface ScenarioMessage {
     }
 
     /**
+     * Error message that indicates that an {@link ActionMessage} that we received while being
+     * in the given {@link ScenarioState} has been detected as erroneous. The {@link ScenarioFsm}
+     * ignored it and "reported" that message via {@link ScenarioFsmContext#reportError(ErrorAction)}
+     */
+    record ErrorAction(ScenarioState state, ActionMessage msg) implements ScenarioMessage {
+
+    }
+
+    /**
      * Message to signal that there are no more actions left to execute within
      * the {@link Scenario}. There may of course still be asynchronous actions
      * that we need to wait to finish but nothing new to start.

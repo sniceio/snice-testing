@@ -8,6 +8,7 @@ import io.snice.testing.core.common.ListOperations;
 import io.snice.testing.http.InitiateHttpRequestDef;
 import io.snice.testing.http.protocol.HttpProtocol;
 import io.snice.testing.http.response.ResponseProcessor;
+import io.snice.testing.http.stack.HttpStack;
 
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -15,6 +16,7 @@ import java.util.List;
 
 public record InitiateHttpRequestAction(String name,
                                         HttpProtocol http,
+                                        HttpStack stack,
                                         InitiateHttpRequestDef httpDef,
                                         Action next) implements Action {
 
@@ -25,7 +27,7 @@ public record InitiateHttpRequestAction(String name,
             final var newSession = uriMaybe.fold(t -> processResolveUriError(session, t), uri -> session);
             if (newSession.isSucceeded()) {
                 final var request = map(session, httpDef, uriMaybe.get());
-                final var transaction = http.stack().newTransaction(request);
+                final var transaction = stack.newTransaction(request);
                 final var processor = new ResponseProcessor(name, request, httpDef.checks(), session, executions, next);
                 transaction.onResponse(processor::process);
                 transaction.start();

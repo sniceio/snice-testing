@@ -3,6 +3,7 @@ package io.snice.testing.http;
 import io.snice.codecs.codec.http.HttpMethod;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.common.Expression;
+import io.snice.testing.http.stack.HttpStackUserConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -57,7 +58,7 @@ class InitiateHttpRequestDefTest extends TestBase {
      */
     @Test
     public void testCreateHttpRequestDef() {
-        final var def = new InitiateHttpRequestDef("Test", GET, List.of(), null, null, null);
+        final var def = new InitiateHttpRequestDef("Test", GET, List.of(), null, null, null, new HttpStackUserConfig());
         assertThat(def.baseUrl(), is(Optional.empty()));
         assertThat(def.uri(), is(Optional.empty()));
         assertThat(def.headers(), is(Map.of()));
@@ -104,7 +105,7 @@ class InitiateHttpRequestDefTest extends TestBase {
         final var protocol = someHttpProtocol(protocolBaseUrl);
         final var defBase = Optional.ofNullable(httpDefBaseUrl == null ? null : Expression.of(httpDefBaseUrl));
         final var defUri = Optional.ofNullable(httpDefUri == null ? null : Expression.of(httpDefUri));
-        final var def = new InitiateHttpRequestDef("Unit Test", GET, List.of(), defBase, defUri, null);
+        final var def = new InitiateHttpRequestDef("Unit Test", GET, List.of(), defBase, defUri, null, new HttpStackUserConfig());
 
         assertThat(def.resolveTarget(protocol, session).get(), is(new URL(expected)));
     }

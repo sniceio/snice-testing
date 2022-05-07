@@ -123,7 +123,7 @@ public class ScenarioFsmTestBase implements LoggingSupport {
 
         // This is the job that will be created and "kicked-off". The job is just a container for
         // an action.
-        final var job = someJob(expectedAction.sri(), expectedAction.isAsync());
+        final var job = someJob(expectedAction.sri(), expectedAction.isAsync(), session);
         when(ctx.prepareExecution(eq(expectedAction), any(Session.class))).thenReturn(job);
 
         return new ExecHolder(execMsg, expectedAction.sri(), job);
@@ -410,10 +410,13 @@ public class ScenarioFsmTestBase implements LoggingSupport {
         return new Execution("Unit Test", success, List.of());
     }
 
-    public ActionJob someJob(final ActionResourceIdentifier sri, final boolean isAsync) {
+    public ActionJob someJob(final ActionResourceIdentifier sri,
+                             final boolean isAsync,
+                             final Session session) {
         final var job = mock(ActionJob.class);
         when(job.sri()).thenReturn(sri);
         when(job.isAsync()).thenReturn(isAsync);
+        when(job.session()).thenReturn(session);
         return job;
     }
 
