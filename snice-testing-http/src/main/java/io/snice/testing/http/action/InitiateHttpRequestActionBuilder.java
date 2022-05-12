@@ -1,5 +1,6 @@
 package io.snice.testing.http.action;
 
+import io.snice.identity.sri.ActionResourceIdentifier;
 import io.snice.testing.core.action.Action;
 import io.snice.testing.core.action.ActionBuilder;
 import io.snice.testing.core.scenario.ScenarioContex;
@@ -15,10 +16,10 @@ public record InitiateHttpRequestActionBuilder(InitiateHttpRequestBuilder builde
     }
 
     @Override
-    public Action build(final ScenarioContex ctx, final Action next) {
+    public Action build(final ActionResourceIdentifier sri, final ScenarioContex ctx, final Action next) {
         final var protocol = (HttpProtocol) ctx.registry().protocol(HttpProtocol.httpProtocolKey).orElseThrow(() -> new IllegalArgumentException("HTTP Protocol has not been configured"));
         final var def = builder.build();
         final var stack = protocol.newStack(def.config());
-        return new InitiateHttpRequestAction(def.requestName(), protocol, stack, def, next);
+        return new InitiateHttpRequestAction(def.requestName(), sri, protocol, stack, def, next);
     }
 }

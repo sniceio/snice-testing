@@ -63,7 +63,10 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
 
     private static void onHttpRequest(final HttpConnection connection, final HttpMessageEvent event) {
         final var req = event.getHttpRequest();
-        final var resp = HttpResponse.create(201).build();
+        // req.header(HttpHeader.HOST)
+        final var resp = HttpResponse.create(201)
+                .header(HttpHeader.CONNECTION, "Close")
+                .build();
         connection.send(resp);
     }
 

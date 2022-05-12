@@ -1,6 +1,7 @@
 package io.snice.testing.http.action;
 
 import io.snice.codecs.codec.http.HttpRequest;
+import io.snice.identity.sri.ActionResourceIdentifier;
 import io.snice.testing.core.Execution;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.action.Action;
@@ -15,6 +16,7 @@ import java.net.URL;
 import java.util.List;
 
 public record InitiateHttpRequestAction(String name,
+                                        ActionResourceIdentifier sri,
                                         HttpProtocol http,
                                         HttpStack stack,
                                         InitiateHttpRequestDef httpDef,

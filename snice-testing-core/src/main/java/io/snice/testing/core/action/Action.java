@@ -1,5 +1,6 @@
 package io.snice.testing.core.action;
 
+import io.snice.identity.sri.ActionResourceIdentifier;
 import io.snice.testing.core.Execution;
 import io.snice.testing.core.Session;
 
@@ -12,6 +13,13 @@ public interface Action {
      * The name of this {@link Action}.
      */
     String name();
+
+    /**
+     * Every {@link Action} has a unique resource identifier associated with it.
+     *
+     * @return
+     */
+    ActionResourceIdentifier sri();
 
     /**
      * An {@link Action} may have attributes that should be updated on the {@link Session} before the

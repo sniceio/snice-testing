@@ -1,6 +1,7 @@
 package io.snice.testing.core.scenario;
 
 import io.snice.functional.Either;
+import io.snice.functional.TriFunction;
 import io.snice.identity.sri.ActionResourceIdentifier;
 import io.snice.identity.sri.ScenarioResourceIdentifier;
 import io.snice.testing.core.Execution;
@@ -68,11 +69,13 @@ public record Scenario(ScenarioResourceIdentifier uuid, String name, List<Action
     }
 
     public Scenario execute(final ActionBuilder builder) {
-        return extendActions(new InternalActionBuilderWrapper(builder::build, false, false));
+        final var sri = ActionResourceIdentifier.of();
+        return extendActions(new InternalActionBuilderWrapper(sri, false, false, builder::build));
     }
 
     public Scenario execute(final MessageBuilder message) {
-        return extendActions(new InternalActionBuilderWrapper((ctx, action) -> message.toActionBuilder().build(ctx, action), false, false));
+        return extendActions(new InternalActionBuilderWrapper(ActionResourceIdentifier.of(), false, false,
+                (sri, ctx, action) -> message.toActionBuilder().build(sri, ctx, action)));
     }
 
     public Scenario executeAsync(final Function<Session, Session> f) {
@@ -80,11 +83,13 @@ public record Scenario(ScenarioResourceIdentifier uuid, String name, List<Action
     }
 
     public Scenario executeAsync(final ActionBuilder builder) {
-        return extendActions(new InternalActionBuilderWrapper(builder::build, true, false));
+        return extendActions(new InternalActionBuilderWrapper(ActionResourceIdentifier.of(), true, false,
+                builder::build));
     }
 
     public Scenario executeAsync(final MessageBuilder message) {
-        return extendActions(new InternalActionBuilderWrapper((ctx, action) -> message.toActionBuilder().build(ctx, action), true, false));
+        return extendActions(new InternalActionBuilderWrapper(ActionResourceIdentifier.of(), true, false,
+                (sri, ctx, action) -> message.toActionBuilder().build(sri, ctx, action)));
     }
 
     /**
@@ -102,7 +107,8 @@ public record Scenario(ScenarioResourceIdentifier uuid, String name, List<Action
         assertNotNull(fn);
         assertArrayNotEmpty(names, "You must specify at least one Action to wait for");
 
-        return extendActions(new InternalActionBuilderWrapper((ctx, action) -> new JoinAction(fn, names), false, false));
+        return extendActions(new InternalActionBuilderWrapper(ActionResourceIdentifier.of(), false, false,
+                (sri, ctx, action) -> new JoinAction(fn, sri, names)));
     }
 
     /**
@@ -120,25 +126,35 @@ public record Scenario(ScenarioResourceIdentifier uuid, String name, List<Action
     private static record InternalActionBuilderWrapper(ActionResourceIdentifier sri,
                                                        boolean isAsync,
                                                        boolean isScenario,
-                                                       BiFunction<ScenarioContex, Action, Action> builder) implements InternalActionBuilder {
+                                                       TriFunction<ActionResourceIdentifier, ScenarioContex, Action, Action> builder) implements InternalActionBuilder {
 
         InternalActionBuilderWrapper {
+            assertNotNull(sri);
             assertNotNull(builder);
         }
 
+        /*
         InternalActionBuilderWrapper(final BiFunction<ScenarioContex, Action, Action> builder,
                                      final boolean isAsync,
                                      final boolean isScenario) {
             this(ActionResourceIdentifier.of(), isAsync, isScenario, builder);
         }
+         */
+
+        @Override
+        public Action build(final ActionResourceIdentifier sri, final ScenarioContex ctx, final Action next) {
+            throw new RuntimeException("The generic ActionBuilder::build method should never be " +
+                    "used on the InternalActionBuilderWrapper. Internal bug");
+        }
 
         @Override
         public Action build(final ScenarioContex ctx, final Action next) {
-            return builder.apply(ctx, next);
+            return builder.apply(sri, ctx, next);
         }
     }
 
     private static record JoinAction(BiFunction<Session, List<Session>, Session> fn,
+                                     ActionResourceIdentifier sri,
                                      String... names) implements Action {
 
 
@@ -156,12 +172,13 @@ public record Scenario(ScenarioResourceIdentifier uuid, String name, List<Action
     private static record GenericSessionActionBuilder(Function<Session, Session> f) implements ActionBuilder {
 
         @Override
-        public Action build(final ScenarioContex ctx, final Action next) {
-            return new GenericSessionAction("generic-exec", f, next);
+        public Action build(final ActionResourceIdentifier sri, final ScenarioContex ctx, final Action next) {
+            return new GenericSessionAction("generic-exec", sri, f, next);
         }
     }
 
     private static record GenericSessionAction(String name,
+                                               ActionResourceIdentifier sri,
                                                Function<Session, Session> f,
                                                Action next) implements Action {
 

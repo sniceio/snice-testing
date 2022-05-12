@@ -5,6 +5,7 @@ import io.snice.codecs.codec.http.HttpMessageFactory;
 import io.snice.codecs.codec.http.HttpMethod;
 import io.snice.codecs.codec.http.HttpProvider;
 import io.snice.codecs.codec.http.HttpRequest;
+import io.snice.identity.sri.ActionResourceIdentifier;
 import io.snice.testing.core.Execution;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.action.Action;
@@ -67,7 +68,7 @@ class InitiateHttpRequestActionTest extends TestBase {
      */
     @Test
     public void testRequestActionButNoTargetUri(@Mock final Action next) throws Exception {
-        final var action = new InitiateHttpRequestAction("Test", someHttpProtocol(), null, someHttpRequestDef(), next);
+        final var action = new InitiateHttpRequestAction("Test", ActionResourceIdentifier.of(), someHttpProtocol(), null, someHttpRequestDef(), next);
         final List<Execution> executions = List.of();
         action.execute(executions, new Session("Testing"));
 
@@ -90,7 +91,7 @@ class InitiateHttpRequestActionTest extends TestBase {
         when(stack.newTransaction(httpRequest)).thenReturn(transactionBuilder);
 
         final var def = someHttpRequestDef("http://example.com", "hello", "world");
-        final var action = new InitiateHttpRequestAction("Test", someHttpProtocol(), stack, def, next);
+        final var action = new InitiateHttpRequestAction("Test", ActionResourceIdentifier.of(), someHttpProtocol(), stack, def, next);
         final List<Execution> executions = List.of();
         action.execute(executions, new Session("Testing"));
 

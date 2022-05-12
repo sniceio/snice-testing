@@ -4,6 +4,7 @@ import io.hektor.core.Actor;
 import io.hektor.core.LifecycleEvent;
 import io.hektor.fsm.Definition;
 import io.hektor.fsm.FSM;
+import io.hektor.fsm.visitor.PlantUmlVisitor;
 import io.snice.functional.Either;
 import io.snice.identity.sri.ActionResourceIdentifier;
 import io.snice.testing.core.action.Action;
@@ -11,6 +12,7 @@ import io.snice.testing.core.scenario.Scenario;
 
 import java.util.List;
 
+import static io.hektor.fsm.docs.Label.label;
 import static io.snice.testing.core.scenario.fsm.ScenarioState.ASYNC;
 import static io.snice.testing.core.scenario.fsm.ScenarioState.ERROR;
 import static io.snice.testing.core.scenario.fsm.ScenarioState.EXEC;
@@ -54,6 +56,17 @@ public class ScenarioFsm {
 
     public static final Definition<ScenarioState, ScenarioFsmContext, ScenarioData> definition;
 
+    /**
+     * All of the various "labels" are only for documentation purposes. Hektor.io FSM allows you to
+     * put labels on actions, guards, transition etc which then e.g. the {@link PlantUmlVisitor} will
+     * use to generate a more human friendly state diagram. These labels have no impact on the
+     * running FSM in any way whatsoever.
+     */
+    private static final String PREPARE_AND_START_JOB_LABEL = "Prepare and Start Action";
+    private static final String ACTION_FINISHED_LABEL = "Process Action Finished";
+    private static final String ACTOR_TERMINATED_LABEL = "Process Action Actor Terminated";
+
+
     static {
         final var builder = FSM.of(ScenarioState.class).ofContextType(ScenarioFsmContext.class).withDataType(ScenarioData.class);
 
@@ -66,12 +79,12 @@ public class ScenarioFsm {
         final var error = builder.withTransientState(ERROR);
         final var terminated = builder.withFinalState(TERMINATED);
 
-        exec.withEnterAction(ScenarioFsm::onEnterExec);
+        exec.withEnterAction(ScenarioFsm::onEnterExec, label("Execute Next Action"));
 
-        wrap.withEnterAction(ScenarioFsm::onEnterWrap);
-        wrap.withSelfEnterAction(ScenarioFsm::onEnterWrap);
+        wrap.withEnterAction(ScenarioFsm::onEnterWrap, label("Outstanding actions?"));
+        wrap.withSelfEnterAction(ScenarioFsm::onEnterWrap, label("Outstanding actions?"));
 
-        init.transitionTo(INIT).onEvent(ScenarioMessage.Init.class).withAction(ScenarioFsm::onInit);
+        init.transitionTo(INIT).onEvent(ScenarioMessage.Init.class).withAction(ScenarioFsm::onInit, label("Validate Scenario"));
 
         init.transitionTo(EXEC).onEvent(ScenarioMessage.OkScenario.class);
         init.transitionTo(TERMINATED).onEvent(ScenarioMessage.BadScenario.class);
@@ -79,30 +92,30 @@ public class ScenarioFsm {
 
         exec.transitionTo(ASYNC)
                 .onEvent(ScenarioMessage.Exec.class)
-                .withGuard((msg, ctx, data) -> msg.action().isAsync())
-                .withAction(ScenarioFsm::onExecute);
+                .withGuard((msg, ctx, data) -> msg.action().isAsync(), label("isAsync Action"))
+                .withAction(ScenarioFsm::onExecute, label(PREPARE_AND_START_JOB_LABEL));
 
         exec.transitionTo(SYNC)
                 .onEvent(ScenarioMessage.Exec.class)
-                .withAction(ScenarioFsm::onExecute);
+                .withAction(ScenarioFsm::onExecute, label(PREPARE_AND_START_JOB_LABEL));
 
         exec.transitionTo(EXEC)
                 .onEvent(ActionMessage.ActionFinished.class)
-                .withAction(ScenarioFsm::onActionFinished);
+                .withAction(ScenarioFsm::onActionFinished, label(ACTION_FINISHED_LABEL));
 
         exec.transitionTo(EXEC).onEvent(LifecycleEvent.Terminated.class)
-                .withAction(ScenarioFsm::onActorTerminated);
+                .withAction(ScenarioFsm::onActorTerminated, label(ACTOR_TERMINATED_LABEL));
 
         exec.transitionTo(WRAP).onEvent(ScenarioMessage.NoMoreActions.class);
 
         sync.transitionTo(ERROR).onEvent(ActionMessage.ActionFinished.class)
-                .withGuard(ScenarioFsm::isUnknownAction)
-                .withTransformation(actionFinished -> SYNC.toString())
-                .withAction((evt, ctx, data) -> onUnknownJob(SYNC, evt, ctx));
+                .withGuard(ScenarioFsm::isUnknownAction, label("Unknown Action"))
+                .withTransformation(actionFinished -> SYNC.toString(), label("evt -> \"SYNC\""))
+                .withAction((evt, ctx, data) -> onUnknownJob(SYNC, evt, ctx), label("Process unknown action"));
 
         sync.transitionTo(EXEC).onEvent(ActionMessage.ActionFinished.class)
-                .withGuard(ScenarioFsm::isOutstandingSynchronousActionGuard)
-                .withAction(ScenarioFsm::onSyncActionFinished);
+                .withGuard(ScenarioFsm::isOutstandingSynchronousActionGuard, label("isOutstandingSyncAction"))
+                .withAction(ScenarioFsm::onSyncActionFinished, label("Process sync action finished"));
 
         // Note that this MUST be defined after the above check whether the
         // event is for a synchronous event or not. Or this will, since it is less restrictive (no guard),
@@ -116,18 +129,18 @@ public class ScenarioFsm {
         // TODO: For parallel SYNC job, also refuse to start it (so different transition -> EXEC to SYNC) and also go via
         // TODO: the ERROR state.
         sync.transitionTo(SYNC).onEvent(ActionMessage.ActionFinished.class)
-                .withAction(ScenarioFsm::onActionFinished);
+                .withAction(ScenarioFsm::onActionFinished, label(ACTION_FINISHED_LABEL));
 
         sync.transitionTo(SYNC).onEvent(LifecycleEvent.Terminated.class)
-                .withAction(ScenarioFsm::onActorTerminated);
+                .withAction(ScenarioFsm::onActorTerminated, label(ACTOR_TERMINATED_LABEL));
 
         async.transitionTo(EXEC).asDefaultTransition();
 
         wrap.transitionTo(WRAP).onEvent(ActionMessage.ActionFinished.class)
-                .withAction(ScenarioFsm::onActionFinished);
+                .withAction(ScenarioFsm::onActionFinished, label(ACTION_FINISHED_LABEL));
 
         wrap.transitionTo(WRAP).onEvent(LifecycleEvent.Terminated.class)
-                .withAction(ScenarioFsm::onActorTerminated);
+                .withAction(ScenarioFsm::onActorTerminated, label(ACTOR_TERMINATED_LABEL));
 
         wrap.transitionTo(TERMINATED).onEvent(ScenarioMessage.Terminate.class);
 
@@ -135,7 +148,7 @@ public class ScenarioFsm {
         // that an error occurred. It will always transition back to the state from where it came, which
         // is managed by the original state doing a transformation of the original message to a string
         // which we'll map on below.
-        error.transitionTo(SYNC).onEvent(String.class).withGuard(SYNC.toString()::equals);
+        error.transitionTo(SYNC).onEvent(String.class).withGuard(SYNC.toString()::equals, label("s == \"SYNC\""));
         error.transitionTo(EXEC).asDefaultTransition();
 
         // TODO:
@@ -145,9 +158,9 @@ public class ScenarioFsm {
     }
 
     /**
-     * While in the {@link ScenarioState#SYNC} state and we recieve an {@link ActionMessage.ActionFinished} message, we
-     * have to ensure that it is indeed for the "job" we are waiting to finish. Remember, there could be asynchyronous
-     * actions executing in parallel to the syncronous single job we are waiting for. As such, when transitioning
+     * While in the {@link ScenarioState#SYNC} state and we receive an {@link ActionMessage.ActionFinished} message, we
+     * have to ensure that it is indeed for the "job" we are waiting to finish. Remember, there could be asynchronous
+     * actions executing in parallel to the synchronous single job we are waiting for. As such, when transitioning
      * away from the {@link ScenarioState#SYNC} back to the {@link ScenarioState#EXEC} phase we need to ensure
      * we only do so when our synchronous action is finished.
      */
@@ -244,9 +257,8 @@ public class ScenarioFsm {
 
     /**
      * Whenever we enter the EXEC state we will fetch the next action and ask the {@link ScenarioFsmContext}
-     * to execute it. As such, it is important that all state transitions that lead to the EXEC state are correct
-     * in that there are still actions to be executed. This is not checked here (except of course you'll get an
-     * exception). Unit tests should ensure all of this is true.
+     * to execute it. If there are no more actions to execute, we'll simple issue a message
+     * stating as much, which will allow us to transition to the next state.
      */
     private static void onEnterExec(final ScenarioFsmContext ctx, final ScenarioData data) {
         if (data.hasMoreActions()) {

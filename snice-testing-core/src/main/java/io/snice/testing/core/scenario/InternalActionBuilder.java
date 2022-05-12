@@ -27,4 +27,6 @@ public interface InternalActionBuilder extends ActionBuilder {
      * If true, then this {@link Action} is an entire {@link Session}.
      */
     boolean isScenario();
+
+    Action build(ScenarioContex ctx, Action next);
 }

@@ -1,5 +1,6 @@
 package io.snice.testing.http.action;
 
+import io.snice.identity.sri.ActionResourceIdentifier;
 import io.snice.testing.core.Execution;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.action.Action;
@@ -10,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 public record AcceptHttpRequestAction(String name,
+                                      ActionResourceIdentifier sri,
                                       HttpStack stack,
                                       AcceptHttpRequestDef def,
                                       Map<String, Object> attributes,
