@@ -4,6 +4,7 @@ import io.snice.codecs.codec.http.HttpMessage;
 import io.snice.codecs.codec.http.HttpMethod;
 import io.snice.codecs.codec.http.HttpProvider;
 import io.snice.codecs.codec.http.HttpRequest;
+import io.snice.identity.sri.ActionResourceIdentifier;
 import io.snice.networking.http.impl.NettyHttpMessageFactory;
 import io.snice.testing.core.common.Expression;
 import io.snice.testing.http.protocol.HttpProtocol;
@@ -11,6 +12,7 @@ import io.snice.testing.http.stack.HttpStack;
 import io.snice.testing.http.stack.HttpStackUserConfig;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -30,6 +32,11 @@ public class TestBase {
     @BeforeAll
     public static void setupEnvironment() {
         HttpProvider.setMessageFactory(new NettyHttpMessageFactory());
+    }
+
+    @BeforeEach
+    public void setUp() {
+
     }
 
     public static HttpProtocol someHttpProtocol(final HttpStack stack) {
@@ -54,13 +61,21 @@ public class TestBase {
         return protocol;
     }
 
-    public static HttpMessage.Builder<HttpRequest> someHttpRequest(final String... headers) {
+    public static HttpMessage.Builder<HttpRequest> someHttpRequest(final URI uri, final String... headers) {
         assertThat(headers.length % 2, is(0));
-        final var builder = someHttpRequest(HttpMethod.POST, "/hello");
+        final var builder = someHttpRequest(HttpMethod.POST, uri.getPath());
         for (int i = 0; i < headers.length; i += 2) {
             builder.header(headers[i], headers[i + 1]);
         }
         return builder;
+    }
+
+    public static HttpMessage.Builder<HttpRequest> someHttpRequest(final String... headers) {
+        try {
+            return someHttpRequest(new URI("/hello"), headers);
+        } catch (final URISyntaxException e) {
+            throw new RuntimeException("Unit Test failed", e);
+        }
     }
 
     public static HttpMessage.Builder<HttpRequest> someHttpRequest(final HttpMethod method, final String uri) {
@@ -70,6 +85,16 @@ public class TestBase {
             Assertions.fail("Please pass in a proper URI. This test is not about testing the URI class!!!");
             throw new RuntimeException(e);
         }
+    }
+
+
+    public static AcceptHttpRequestBuilder someAcceptHttpRequestDef() {
+        return someAcceptHttpRequestDef(HttpMethod.GET, "/" + ActionResourceIdentifier.of().asString());
+    }
+
+    public static AcceptHttpRequestBuilder someAcceptHttpRequestDef(final HttpMethod method, final String path) {
+        return HttpDsl.http("Unit Test").accept(method, path)
+                .saveAs("Unit Test Webhook");
     }
 
     public static InitiateHttpRequestDef someHttpRequestDef() {

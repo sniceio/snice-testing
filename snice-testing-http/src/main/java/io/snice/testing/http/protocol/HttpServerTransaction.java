@@ -1,5 +1,6 @@
 package io.snice.testing.http.protocol;
 
+import io.snice.codecs.codec.http.HttpMessage;
 import io.snice.codecs.codec.http.HttpRequest;
 import io.snice.testing.http.action.AcceptHttpRequestAction;
 
@@ -19,6 +20,8 @@ public interface HttpServerTransaction {
         Builder onTimeout(Consumer<HttpServerTransaction> f);
 
         HttpServerTransaction start();
+
+        HttpMessage.Builder createResponse(int statusCode);
 
     }
 }

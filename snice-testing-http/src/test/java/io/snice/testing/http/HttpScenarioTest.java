@@ -15,7 +15,7 @@ import static io.snice.testing.http.check.HttpCheckSupport.status;
 @ExtendWith(MockitoExtension.class)
 public class HttpScenarioTest {
 
-    @Test
+    @Test()
     public void buildHttpBasicScenario() throws InterruptedException {
         final var config = new SniceConfig();
 

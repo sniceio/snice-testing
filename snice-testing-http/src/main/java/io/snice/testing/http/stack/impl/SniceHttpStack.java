@@ -1,6 +1,7 @@
 package io.snice.testing.http.stack.impl;
 
 import io.snice.codecs.codec.http.HttpHeader;
+import io.snice.codecs.codec.http.HttpMessage;
 import io.snice.codecs.codec.http.HttpRequest;
 import io.snice.codecs.codec.http.HttpResponse;
 import io.snice.identity.sri.ActionResourceIdentifier;
@@ -171,6 +172,11 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
             final var transaction = new DefaultHttpServerTransaction(sri, timeout, onRequest, onTimeout);
             registerHttpServerTransaction(transaction);
             return transaction;
+        }
+
+        @Override
+        public HttpMessage.Builder createResponse(final int statusCode) {
+            return HttpResponse.create(statusCode);
         }
     }
 

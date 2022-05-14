@@ -22,8 +22,6 @@ public record RequestProcessor(String name,
                                Action next) {
 
     public void onRequest(final HttpServerTransaction transaction, final HttpRequest request) {
-        System.err.println("yayyyyyy, got an incoming request");
-
         final var result = Check.check(request, session, checks);
         final var checkResults = result.right();
         final var failedChecks = checkResults.stream().filter(CheckResult::isFailure).findAny().isPresent();
