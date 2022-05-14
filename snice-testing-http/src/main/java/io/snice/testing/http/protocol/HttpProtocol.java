@@ -1,5 +1,6 @@
 package io.snice.testing.http.protocol;
 
+import io.snice.identity.sri.ActionResourceIdentifier;
 import io.snice.testing.core.common.Expression;
 import io.snice.testing.core.protocol.Protocol;
 import io.snice.testing.core.protocol.ProtocolRegistry;
@@ -30,7 +31,7 @@ public interface HttpProtocol extends Protocol {
      *
      * @return
      */
-    HttpStack newStack(HttpStackUserConfig config);
+    HttpStack newStack(ActionResourceIdentifier sri, HttpStackUserConfig config);
 
     HttpConfig config();
 

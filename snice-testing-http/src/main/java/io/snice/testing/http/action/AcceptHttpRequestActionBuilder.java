@@ -21,7 +21,7 @@ public record AcceptHttpRequestActionBuilder(AcceptHttpRequestBuilder builder) i
     public Action build(final ActionResourceIdentifier sri, final ScenarioContex ctx, final Action next) {
         final var protocol = (HttpProtocol) ctx.registry().protocol(HttpProtocol.httpProtocolKey).orElseThrow(() -> new IllegalArgumentException("HTTP Protocol has not been configured"));
         final var def = builder.build();
-        final var stack = protocol.newStack(def.config());
+        final var stack = protocol.newStack(sri, def.config());
 
         // TODO: need to consult the IpProvider in case we need a public facing address
         final Map<String, Object> attributes = Map.of(def.saveAs(), stack.address());

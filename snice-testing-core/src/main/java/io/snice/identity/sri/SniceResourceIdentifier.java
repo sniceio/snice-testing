@@ -14,6 +14,11 @@ public sealed interface SniceResourceIdentifier permits ActionResourceIdentifier
         SessionResourceIdentifier {
 
     /**
+     * The length, without the prefix, of every SRI.
+     */
+    int LENGTH = 32;
+
+    /**
      * The three character prefix.
      */
     String prefix();
@@ -28,8 +33,10 @@ public sealed interface SniceResourceIdentifier permits ActionResourceIdentifier
     }
 
     static void validateRaw(final Buffer raw) {
-        assertArgument(raw != null && raw.capacity() == 16, "The SRI consists of a 3 character prefix and " +
-                "a 32 hex-digit long UUID (16 bytes). The supplied raw Buffer was not 16 bytes long");
+        final var expectedCapacity = LENGTH / 2;
+        assertArgument(raw != null && raw.capacity() == expectedCapacity, "The SRI consists of a 3 character prefix and " +
+                "a " + LENGTH + " hex-digit long UUID (" + expectedCapacity
+                + ") bytes). The supplied raw Buffer was not " + expectedCapacity + " bytes long");
     }
 
     static Buffer uuid() {
@@ -61,13 +68,13 @@ public sealed interface SniceResourceIdentifier permits ActionResourceIdentifier
 
         protected static <T extends SniceResourceIdentifier> T from(final String expectedPrefix, final String raw, final Function<Buffer, T> builder) {
             // TODO: lots of checks needs to be done.
-            if (raw == null || raw.length() != 32 + expectedPrefix.length()) {
-                throw new IllegalArgumentException("The SRI is not exactly " + (32 + expectedPrefix.length())
+            if (raw == null || raw.length() != LENGTH + expectedPrefix.length()) {
+                throw new IllegalArgumentException("The SRI is not exactly " + (LENGTH + expectedPrefix.length())
                         + " characters long. Cannot be a proper SRI");
             }
 
             if (raw.startsWith(expectedPrefix)) {
-                final var buffer = Buffers.wrapAsHex(raw.substring(expectedPrefix.length(), raw.length()));
+                final var buffer = Buffers.wrapAsHex(raw.substring(expectedPrefix.length()));
                 return builder.apply(buffer);
             }
 

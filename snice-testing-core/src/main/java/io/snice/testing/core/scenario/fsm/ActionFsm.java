@@ -35,6 +35,7 @@ public class ActionFsm {
             start.action().execute(List.of(), session);
         } catch (final Throwable t) {
             // TODO handle it.
+            t.printStackTrace();
         }
     }
 

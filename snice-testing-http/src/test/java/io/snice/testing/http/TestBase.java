@@ -48,7 +48,7 @@ public class TestBase {
         final var protocol = mock(HttpProtocol.class);
         when(protocol.baseUrl()).thenReturn(Optional.ofNullable(baseUrl == null ? null : Expression.of(baseUrl)));
         if (stack != null) {
-            when(protocol.newStack(any())).thenReturn(stack);
+            when(protocol.newStack(any(), any())).thenReturn(stack);
         }
 
         return protocol;

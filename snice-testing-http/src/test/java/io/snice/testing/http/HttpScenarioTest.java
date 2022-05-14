@@ -16,7 +16,7 @@ import static io.snice.testing.http.check.HttpCheckSupport.status;
 public class HttpScenarioTest {
 
     @Test
-    public void buildHttpBasicScenario() {
+    public void buildHttpBasicScenario() throws InterruptedException {
         final var config = new SniceConfig();
 
         final var port = 80;
@@ -72,6 +72,8 @@ public class HttpScenarioTest {
                 .configuration(config)
                 .protocols(http)
                 .start();
+
+        Thread.sleep(100000);
 
     }
 }

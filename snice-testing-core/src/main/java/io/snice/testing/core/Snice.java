@@ -156,7 +156,6 @@ public final class Snice {
 
             try {
                 final var snice = new Snice(config, hektor, protocols, scenario).run();
-                Thread.sleep(10000);
                 return snice;
             } catch (final Exception e) {
                 throw new RuntimeException("Unable to start Snice", e);

@@ -1,6 +1,7 @@
 package io.snice.testing.http.protocol.impl;
 
 import io.snice.codecs.codec.http.HttpProvider;
+import io.snice.identity.sri.ActionResourceIdentifier;
 import io.snice.networking.http.impl.NettyHttpMessageFactory;
 import io.snice.testing.core.common.Expression;
 import io.snice.testing.core.protocol.ProtocolRegistry;
@@ -42,8 +43,8 @@ public record SniceHttpProtocol(HttpConfig config,
     }
 
     @Override
-    public HttpStack newStack(final HttpStackUserConfig config) {
-        return stack.newStack(config);
+    public HttpStack newStack(final ActionResourceIdentifier sri, final HttpStackUserConfig config) {
+        return stack.newStack(sri, config);
     }
 
     private static class SniceNetworkingHttpBuilder implements HttpProtocolBuilder {
