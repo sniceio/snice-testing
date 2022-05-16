@@ -10,12 +10,10 @@ import io.snice.testing.core.common.Expression;
 import io.snice.testing.http.protocol.HttpProtocol;
 import io.snice.testing.http.stack.HttpStack;
 import io.snice.testing.http.stack.HttpStackUserConfig;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,29 +62,26 @@ public class TestBase {
     public static HttpMessage.Builder<HttpRequest> someHttpRequest(final URI uri, final String... headers) {
         assertThat(headers.length % 2, is(0));
         final var builder = someHttpRequest(HttpMethod.POST, uri.getPath());
-        for (int i = 0; i < headers.length; i += 2) {
-            builder.header(headers[i], headers[i + 1]);
+        if (headers != null) {
+            for (int i = 0; i < headers.length; i += 2) {
+                builder.header(headers[i], headers[i + 1]);
+            }
         }
         return builder;
     }
 
+    public static HttpMessage.Builder<HttpRequest> someHttpRequest() {
+        return someHttpRequest(null);
+
+    }
+
     public static HttpMessage.Builder<HttpRequest> someHttpRequest(final String... headers) {
-        try {
-            return someHttpRequest(new URI("/hello"), headers);
-        } catch (final URISyntaxException e) {
-            throw new RuntimeException("Unit Test failed", e);
-        }
+        return someHttpRequest(URI.create("/hello"), headers);
     }
 
     public static HttpMessage.Builder<HttpRequest> someHttpRequest(final HttpMethod method, final String uri) {
-        try {
-            return HttpRequest.create(method, new URI(uri));
-        } catch (final URISyntaxException e) {
-            Assertions.fail("Please pass in a proper URI. This test is not about testing the URI class!!!");
-            throw new RuntimeException(e);
-        }
+        return HttpRequest.create(method, URI.create(uri));
     }
-
 
     public static AcceptHttpRequestBuilder someAcceptHttpRequestDef() {
         return someAcceptHttpRequestDef(HttpMethod.GET, "/" + ActionResourceIdentifier.of().asString());

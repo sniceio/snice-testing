@@ -1,7 +1,6 @@
 package io.snice.testing.http.stack.impl;
 
 import io.snice.codecs.codec.http.HttpHeader;
-import io.snice.codecs.codec.http.HttpMessage;
 import io.snice.codecs.codec.http.HttpRequest;
 import io.snice.codecs.codec.http.HttpResponse;
 import io.snice.identity.sri.ActionResourceIdentifier;
@@ -13,6 +12,7 @@ import io.snice.networking.http.HttpEnvironment;
 import io.snice.networking.http.event.HttpEvent;
 import io.snice.networking.http.event.HttpMessageEvent;
 import io.snice.testing.http.HttpConfig;
+import io.snice.testing.http.protocol.HttpAcceptor;
 import io.snice.testing.http.protocol.HttpServerTransaction;
 import io.snice.testing.http.protocol.HttpTransaction;
 import io.snice.testing.http.stack.HttpStack;
@@ -27,6 +27,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
 import static io.snice.preconditions.PreConditions.assertNotNull;
@@ -42,7 +43,7 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
     private final ConcurrentMap<ActionResourceIdentifier, HttpStackWrapper> stacks = new ConcurrentHashMap<>();
 
     // TODO: need sane default values for the size of the map...
-    private final ConcurrentMap<ActionResourceIdentifier, DefaultHttpServerTransaction> serverTransactions = new ConcurrentHashMap<>();
+    private final ConcurrentMap<ActionResourceIdentifier, DefaultHttpAcceptor> acceptors = new ConcurrentHashMap<>();
 
     @Override
     public void initialize(final HttpBootstrap<HttpConfig> bootstrap) {
@@ -52,9 +53,9 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
         });
     }
 
-    private HttpServerTransaction.Builder newServerTransaction(final ActionResourceIdentifier sri,
-                                                               final Duration timeout) {
-        return new HttpServerTransactionBuilder(sri, timeout);
+    private HttpAcceptor.Builder newHttpAcceptor(final ActionResourceIdentifier sri,
+                                                 final Duration timeout) {
+        return new HttpAcceptorBuilder(sri, timeout);
     }
 
     public HttpStack newStack(final ActionResourceIdentifier sri, final HttpStackUserConfig config) {
@@ -92,25 +93,27 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
 
     private void onHttpRequest(final HttpConnection connection, final HttpMessageEvent event) {
         final var req = event.getHttpRequest();
-        final var transactionMaybe = mapRequest(req);
-        if (transactionMaybe.isEmpty()) {
-            final var notFound = HttpResponse.create(404)
-                    .header(HttpHeader.CONNECTION, "Close")
-                    .build();
-            connection.send(notFound);
-        } else {
-            final var t = transactionMaybe.get();
-            t.onRequest.accept(t, req);
-        }
+        final var resp = mapRequest(req).map(acceptor -> {
+            final var transaction = new HttpServerTransactionImpl(connection, event);
+            return acceptor.onRequest.apply(transaction, req);
+        }).orElseGet(SniceHttpStack::notFound);
+
+        connection.send(resp);
     }
 
-    private void registerHttpServerTransaction(final DefaultHttpServerTransaction transaction) {
-        serverTransactions.put(transaction.sri, transaction);
+    private static HttpResponse notFound() {
+        return HttpResponse.create(404)
+                .header(HttpHeader.CONNECTION, "Close")
+                .build();
     }
 
-    private Optional<DefaultHttpServerTransaction> mapRequest(final HttpRequest req) {
+    private void registerHttpAcceptor(final DefaultHttpAcceptor acceptor) {
+        acceptors.put(acceptor.sri, acceptor);
+    }
+
+    private Optional<DefaultHttpAcceptor> mapRequest(final HttpRequest req) {
         return extractSri(ActionResourceIdentifier.PREFIX, ActionResourceIdentifier::from, req.uri())
-                .map(serverTransactions::get);
+                .map(acceptors::get);
     }
 
     private static void onHttpResponse(final HttpConnection connection, final HttpMessageEvent event) {
@@ -125,11 +128,11 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
                                            URL address) implements HttpStack {
 
         @Override
-        public HttpServerTransaction.Builder newServerTransaction(final Duration timeout) {
+        public HttpAcceptor.Builder newHttpAcceptor(final Duration timeout) {
             // TODO: overloaded version with no timeout and then we grab from the HttpStackUserConfig? or some default?
             assertNotNull(timeout);
             // TODO: perhaps some sane timeout too? 6 hrs is probably not ok!
-            return actualStack.newServerTransaction(sri, timeout);
+            return actualStack.newHttpAcceptor(sri, timeout);
         }
 
         @Override
@@ -138,53 +141,49 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
         }
     }
 
-    private class HttpServerTransactionBuilder implements HttpServerTransaction.Builder {
+    private class HttpAcceptorBuilder implements HttpAcceptor.Builder {
 
         private final ActionResourceIdentifier sri;
         private final Duration timeout;
 
-        private BiConsumer<HttpServerTransaction, HttpRequest> onRequest;
-        private Consumer<HttpServerTransaction> onTimeout;
+        private BiFunction<HttpServerTransaction, HttpRequest, HttpResponse> onRequest;
+        private Consumer<HttpAcceptor> onTimeout;
 
-        HttpServerTransactionBuilder(final ActionResourceIdentifier sri, final Duration timeout) {
+        HttpAcceptorBuilder(final ActionResourceIdentifier sri, final Duration timeout) {
             this.sri = sri;
             this.timeout = timeout;
         }
 
         @Override
-        public HttpServerTransaction.Builder onRequest(final BiConsumer<HttpServerTransaction, HttpRequest> f) {
+        public HttpAcceptor.Builder onRequest(final BiFunction<HttpServerTransaction, HttpRequest, HttpResponse> f) {
             assertNotNull(f);
             onRequest = f;
             return this;
         }
 
         @Override
-        public HttpServerTransaction.Builder onTimeout(final Consumer<HttpServerTransaction> f) {
+        public HttpAcceptor.Builder onTimeout(final Consumer<HttpAcceptor> f) {
             assertNotNull(f);
             onTimeout = f;
             return this;
         }
 
         @Override
-        public HttpServerTransaction start() {
+        public HttpAcceptor start() {
             assertNotNull(onRequest, "You must specify a function for handling the incoming Http Request");
             assertNotNull(onTimeout, "You must specify a function for handling the timeout");
-            final var transaction = new DefaultHttpServerTransaction(sri, timeout, onRequest, onTimeout);
-            registerHttpServerTransaction(transaction);
-            return transaction;
+            final var acceptor = new DefaultHttpAcceptor(sri, timeout, onRequest, onTimeout);
+            registerHttpAcceptor(acceptor);
+            return acceptor;
         }
 
-        @Override
-        public HttpMessage.Builder createResponse(final int statusCode) {
-            return HttpResponse.create(statusCode);
-        }
     }
 
-    private record DefaultHttpServerTransaction(ActionResourceIdentifier sri,
-                                                Duration timeout,
-                                                BiConsumer<HttpServerTransaction, HttpRequest> onRequest,
-                                                Consumer<HttpServerTransaction> onTimeout)
-            implements HttpServerTransaction {
+    private record DefaultHttpAcceptor(ActionResourceIdentifier sri,
+                                       Duration timeout,
+                                       BiFunction<HttpServerTransaction, HttpRequest, HttpResponse> onRequest,
+                                       Consumer<HttpAcceptor> onTimeout)
+            implements HttpAcceptor {
 
     }
 

@@ -3,6 +3,8 @@ package io.snice.testing.http.response;
 import io.snice.testing.core.Execution;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.action.Action;
+import io.snice.testing.http.AcceptHttpRequestBuilder;
+import io.snice.testing.http.AcceptHttpRequestDef;
 import io.snice.testing.http.TestBase;
 import io.snice.testing.http.protocol.HttpServerTransaction;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,13 +39,19 @@ class RequestProcessorTest extends TestBase {
 
     private Session session;
 
+    private AcceptHttpRequestBuilder defBuilder;
+
     @Override
     @BeforeEach
     public void setUp() {
         super.setUp();
         session = new Session("Request Processor Test");
+        defBuilder = someAcceptHttpRequestDef();
     }
 
+    private RequestProcessor someRequestProcessor(final AcceptHttpRequestDef def) {
+        return new RequestProcessor(def.requestName(), def.checks(), session, List.of(), next);
+    }
 
     /**
      * Ensure that if a check fails that we also fail the {@link Execution} and the {@link Session}
@@ -51,12 +59,12 @@ class RequestProcessorTest extends TestBase {
      */
     @Test
     public void testRequestProcessorFailedChecks() {
-        final var def = someAcceptHttpRequestDef()
+        final var def = defBuilder
                 .check(header("Hello").is("Wrong")) // will fail
                 .check(header("Foo").is("Boo")) // will succeed but combined, it is still a fail
                 .build();
 
-        final var processor = new RequestProcessor(def.requestName(), def.checks(), session, List.of(), next);
+        final var processor = someRequestProcessor(def);
         final var incomingHttpRequest = someHttpRequest("Foo", "Boo", "Hello", "World").build();
         processor.onRequest(transaction, incomingHttpRequest);
 
@@ -65,6 +73,20 @@ class RequestProcessorTest extends TestBase {
         final var execution = executionsCaptor.getValue().get(0);
         assertThat(execution.success(), is(false));
         assertThat(sessionCaptor.getValue().isFailed(), is(true));
+    }
+
+    /**
+     * Ensure that we will create and send an HTTP response back.
+     */
+    @Test
+    public void testRequestProcessorSendResponse() {
+        final var def = defBuilder.respond(418, "Teapot")
+                .header("UnitTest", "Hello")
+                .build();
+
+        final var processor = someRequestProcessor(def);
+        processor.onRequest(transaction, someHttpRequest().build());
+
     }
 
 }

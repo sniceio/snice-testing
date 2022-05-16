@@ -2,7 +2,7 @@ package io.snice.testing.http.stack;
 
 import io.snice.codecs.codec.http.HttpRequest;
 import io.snice.testing.core.action.Action;
-import io.snice.testing.http.protocol.HttpServerTransaction;
+import io.snice.testing.http.protocol.HttpAcceptor;
 import io.snice.testing.http.protocol.HttpTransaction;
 
 import java.net.URL;
@@ -16,7 +16,7 @@ public interface HttpStack {
      * Whenever we wish to accept an incoming {@link HttpRequest}, we need to ask the {@link HttpStack}
      * to do so for us.
      */
-    HttpServerTransaction.Builder newServerTransaction(Duration timeout);
+    HttpAcceptor.Builder newHttpAcceptor(Duration timeout);
 
     HttpTransaction.Builder newTransaction(HttpRequest request);
 

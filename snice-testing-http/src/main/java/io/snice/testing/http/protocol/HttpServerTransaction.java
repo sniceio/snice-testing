@@ -1,27 +1,10 @@
 package io.snice.testing.http.protocol;
 
-import io.snice.codecs.codec.http.HttpMessage;
-import io.snice.codecs.codec.http.HttpRequest;
-import io.snice.testing.http.action.AcceptHttpRequestAction;
-
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
+import io.snice.codecs.codec.http.HttpResponse;
 
 public interface HttpServerTransaction {
 
-    interface Builder {
+    HttpResponse.Builder<HttpResponse> createResponse(int statusCode);
 
-        Builder onRequest(BiConsumer<HttpServerTransaction, HttpRequest> f);
-
-        /**
-         * If we do not receive a request within a given timeout, this {@link AcceptHttpRequestAction} will
-         * eventually give up.
-         */
-        Builder onTimeout(Consumer<HttpServerTransaction> f);
-
-        HttpServerTransaction start();
-
-        HttpMessage.Builder createResponse(int statusCode);
-
-    }
+    void sendResponse(HttpResponse response);
 }

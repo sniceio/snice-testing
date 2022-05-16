@@ -21,9 +21,8 @@ public record AcceptHttpRequestAction(String name,
 
     @Override
     public void execute(final List<Execution> executions, final Session session) {
-        System.err.println("Waiting for traffic");
         final var requestProcessor = new RequestProcessor(name, def.checks(), session, executions, next);
-        final var transaction = stack.newServerTransaction(Duration.ofSeconds(10))
+        stack.newHttpAcceptor(Duration.ofSeconds(10))
                 .onRequest(requestProcessor::onRequest)
                 .onTimeout(requestProcessor::onTimeout)
                 .start();
