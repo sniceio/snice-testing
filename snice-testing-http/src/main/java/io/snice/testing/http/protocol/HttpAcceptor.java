@@ -26,6 +26,14 @@ import java.util.function.Consumer;
  * Also, perhaps there should be a "send terminate event to acceptor" since e.g. if you issue another
  * request to the system under test, you may know that the next webhook should be the last one, or
  * something like that...
+ * <p>
+ * Also note that the reason why it is the same "acceptor" and not a new everyone is because of the design where
+ * a single "accept" generates a unique URL that is to be used as the URL for this webhook. If you called "accept" multiple
+ * times in order to have multiple events delivered to that webhook, it no longer would be the "same" webhook and as such, if
+ * the service under test is expecting a single webhook to deliver a bunch of related events (e.g. the Twilio API and
+ * call progress events) it wouldn't work.
+ *
+ * NOTE: may have to work on the API around how to express multiple events to a single webhook...
  */
 public interface HttpAcceptor {
 
@@ -38,6 +46,15 @@ public interface HttpAcceptor {
          * eventually give up.
          */
         Builder onTimeout(Consumer<HttpAcceptor> f);
+
+        /**
+         * Function to call when the {@link HttpAcceptor} terminates, which it may do because an {@link HttpRequest}
+         * was received and subsequently, an {@link HttpResponse} was sent, or a timeout occurred etc.
+         * <p>
+         * Once the {@link HttpAcceptor} has been terminated, any traffic received on its unique URL will be ignored
+         * by the underlying HTTP stack.
+         */
+        Builder onAcceptorTerminated(Consumer<HttpAcceptor> f);
 
         HttpAcceptor start();
 

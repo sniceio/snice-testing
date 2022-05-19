@@ -25,6 +25,7 @@ public record AcceptHttpRequestAction(String name,
         stack.newHttpAcceptor(Duration.ofSeconds(10))
                 .onRequest(requestProcessor::onRequest)
                 .onTimeout(requestProcessor::onTimeout)
+                .onAcceptorTerminated(requestProcessor::onTermination)
                 .start();
     }
 

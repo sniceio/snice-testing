@@ -93,12 +93,19 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
 
     private void onHttpRequest(final HttpConnection connection, final HttpMessageEvent event) {
         final var req = event.getHttpRequest();
-        final var resp = mapRequest(req).map(acceptor -> {
-            final var transaction = new HttpServerTransactionImpl(connection, event);
-            return acceptor.onRequest.apply(transaction, req);
-        }).orElseGet(SniceHttpStack::notFound);
+        final var acceptorMaybe = mapRequest(req);
+        final var resp = acceptorMaybe
+                .map(acceptor -> acceptor.processRequest(event))
+                .orElseGet(SniceHttpStack::notFound);
 
         connection.send(resp);
+
+        if (acceptorMaybe.map(DefaultHttpAcceptor::isDone).orElse(false)) {
+            final var acceptor = acceptorMaybe.get();
+            deRegisterHttpAcceptor(acceptor);
+            acceptor.terminate();
+            connection.close();
+        }
     }
 
     private static HttpResponse notFound() {
@@ -107,8 +114,12 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
                 .build();
     }
 
+    private void deRegisterHttpAcceptor(final DefaultHttpAcceptor acceptor) {
+        acceptors.remove(acceptor.sri());
+    }
+
     private void registerHttpAcceptor(final DefaultHttpAcceptor acceptor) {
-        acceptors.put(acceptor.sri, acceptor);
+        acceptors.put(acceptor.sri(), acceptor);
     }
 
     private Optional<DefaultHttpAcceptor> mapRequest(final HttpRequest req) {
@@ -148,6 +159,7 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
 
         private BiFunction<HttpServerTransaction, HttpRequest, HttpResponse> onRequest;
         private Consumer<HttpAcceptor> onTimeout;
+        private Consumer<HttpAcceptor> onTermination;
 
         HttpAcceptorBuilder(final ActionResourceIdentifier sri, final Duration timeout) {
             this.sri = sri;
@@ -169,21 +181,23 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
         }
 
         @Override
+        public HttpAcceptor.Builder onAcceptorTerminated(final Consumer<HttpAcceptor> f) {
+            assertNotNull(f);
+            onTermination = f;
+            return this;
+
+        }
+
+        @Override
         public HttpAcceptor start() {
             assertNotNull(onRequest, "You must specify a function for handling the incoming Http Request");
             assertNotNull(onTimeout, "You must specify a function for handling the timeout");
-            final var acceptor = new DefaultHttpAcceptor(sri, timeout, onRequest, onTimeout);
+            assertNotNull(onTermination, "You must specify a function for handling the termination of the "
+                    + HttpAcceptor.class.getSimpleName());
+            final var acceptor = new DefaultHttpAcceptor(sri, timeout, onRequest, onTimeout, onTermination);
             registerHttpAcceptor(acceptor);
             return acceptor;
         }
-
-    }
-
-    private record DefaultHttpAcceptor(ActionResourceIdentifier sri,
-                                       Duration timeout,
-                                       BiFunction<HttpServerTransaction, HttpRequest, HttpResponse> onRequest,
-                                       Consumer<HttpAcceptor> onTimeout)
-            implements HttpAcceptor {
 
     }
 
