@@ -54,7 +54,7 @@ public interface InitiateHttpRequestBuilder extends MessageBuilder {
      * @param content
      * @return
      */
-    InitiateHttpRequestBuilder content(Map<String, Object> content);
+    InitiateHttpRequestBuilder content(Map<String, String> content);
 
     /**
      * Convenience method for adding the following two headers:

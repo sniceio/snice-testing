@@ -5,6 +5,7 @@ import io.snice.codecs.codec.http.HttpRequest;
 import io.snice.codecs.codec.http.HttpResponse;
 import io.snice.identity.sri.ActionResourceIdentifier;
 import io.snice.networking.common.Transport;
+import io.snice.networking.core.ListeningPoint;
 import io.snice.networking.http.HttpApplication;
 import io.snice.networking.http.HttpBootstrap;
 import io.snice.networking.http.HttpConnection;
@@ -21,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.time.Duration;
 import java.util.Optional;
@@ -60,7 +62,7 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
 
     public HttpStack newStack(final ActionResourceIdentifier sri, final HttpStackUserConfig config) {
         assertNotNull(config);
-        final var address = allocateNewAddress(sri);
+        final var address = allocateNewAddress(sri, config);
         final var stack = new HttpStackWrapper(sri, config, this, address);
         stacks.put(sri, stack);
         return stack;
@@ -68,18 +70,38 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
 
     /**
      * Whenever a new request to create a new "stack" is made, we need to allocate a new unique
-     * address so that we can dispatch traffic properly
+     * address so that we can dispatch traffic properly. We rely on the underlying Snice Networking
+     * to provide a so-called VIP Address, which is typically an external load balancer so that
+     * external traffic can reach out.
      *
      * @param sri
      * @return
      */
-    private URL allocateNewAddress(final ActionResourceIdentifier sri) {
+    private URL allocateNewAddress(final ActionResourceIdentifier sri, final HttpStackUserConfig config) {
         try {
-            return new URL("http://localhost:7777/" + sri);
+            final var nic = env.getDefaultNetworkInterface();
+
+            // TODO: would need to look into the user preference to see what they prefer. http or https etc...
+            final ListeningPoint<HttpEvent> lp;
+            if (nic.isSupportingTransport(Transport.tls)) {
+                lp = nic.getListeningPoint(Transport.tls);
+            } else if (nic.isSupportingTransport(Transport.tcp)) {
+                lp = nic.getListeningPoint(Transport.tcp);
+            } else {
+                // TODO: not sure how to handle but bail for now.
+                throw new IllegalArgumentException("Unable to find suitable Network Interface. The default " +
+                        "did not support TLS nor TCP, which seems odd");
+            }
+
+            // TODO: need to ensure that we can just append slash + SRI (in case it already ends on slash etc)
+            final var url = lp.getVipAddress().orElse(lp.getListenAddress());
+            return new URL(url.toString() + "/" + sri.asString());
+
         } catch (final MalformedURLException e) {
             throw new IllegalArgumentException(e);
         }
     }
+
 
     @Override
     public void run(final HttpConfig configuration, final HttpEnvironment<HttpConfig> environment) {
@@ -106,6 +128,11 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
             acceptor.terminate();
             connection.close();
         }
+
+        // we sent a 404 so close connection
+        if (acceptorMaybe.isEmpty()) {
+            connection.close();
+        }
     }
 
     private static HttpResponse notFound() {
@@ -129,7 +156,6 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
 
     private static void onHttpResponse(final HttpConnection connection, final HttpMessageEvent event) {
         final var resp = event.getHttpResponse();
-        System.err.println("Received HTTP response outside of a Transaction: " + resp.statusCode() + " " + resp.reasonPhrase());
         resp.headers().forEach(System.err::println);
     }
 
@@ -231,11 +257,12 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
                 implements HttpTransaction {
 
             private DefaultHttpTransaction start() {
-                final var remoteHost = resolveRemoteHost(request);
-                final int remotePort = resolveRemotePort(request);
+                final var remoteDest = resolveRemoteDest(request);
+                final var remoteHost = remoteDest.getHost();
+                final int remotePort = resolveRemotePort(request, remoteDest);
                 final var transport = resolveTransport(request);
                 env.connect(transport, remoteHost, remotePort).thenAccept(c -> {
-                    logger.debug("Successfully connected to " + remoteHost);
+                    logger.debug("Successfully connected to " + remoteDest);
                     c.createNewTransaction(request)
                             .onResponse((tx, resp) -> onResponse.accept(this, resp))
                             .onTransactionTimeout(tx -> logger.warn("Currently not handling the transaction timing out"))
@@ -245,25 +272,27 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
                 return this;
             }
 
-            /**
-             * Figure out where to actually connect to by looking into the request and extract
-             * out the host and port.
-             */
-            private static String resolveRemoteHost(final HttpRequest req) {
+            private static URI resolveRemoteDest(final HttpRequest req) {
                 return req.header("Host")
-                        .map(HttpHeader::value)
-                        .map(Object::toString)
+                        .map(host -> (req.isSecure() ? "https://" : "http://") + host.value())
+                        .map(URI::create)
                         // TODO: check the URI and if still not there, we'll throw an exception.
                         .orElseThrow(() -> new RuntimeException("Unable to figure out the host"));
             }
 
-            private static int resolveRemotePort(final HttpRequest req) {
-                // TODO: for now let's keep it simple.
+            private static int resolveRemotePort(final HttpRequest req, final URI remoteDest) {
+                if (remoteDest.getPort() != -1) {
+                    return remoteDest.getPort();
+                }
+
                 return req.isSecure() ? 443 : 80;
             }
 
             private static Transport resolveTransport(final HttpRequest req) {
-                // TODO: for now let's keep it simple.
+                if (req.isSecure()) {
+                    return Transport.tls;
+                }
+
                 return Transport.tcp;
             }
         }

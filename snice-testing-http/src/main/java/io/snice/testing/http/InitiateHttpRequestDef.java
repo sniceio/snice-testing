@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static io.snice.functional.Optionals.isAllEmpty;
+import static io.snice.preconditions.PreConditions.assertArgument;
 import static io.snice.preconditions.PreConditions.assertNotEmpty;
 import static io.snice.preconditions.PreConditions.assertNotNull;
 
@@ -33,6 +34,7 @@ public record InitiateHttpRequestDef(String requestName,
                                      Optional<Expression> baseUrl,
                                      Optional<Expression> uri,
                                      Map<String, Expression> headers,
+                                     Optional<Content<?>> content,
                                      HttpStackUserConfig config) {
 
     public InitiateHttpRequestDef {
@@ -40,11 +42,12 @@ public record InitiateHttpRequestDef(String requestName,
         assertNotNull(method, "You must specify the HTTP Method");
         baseUrl = baseUrl == null ? Optional.empty() : baseUrl;
         uri = uri == null ? Optional.empty() : uri;
+        content = content == null ? Optional.empty() : content;
         headers = headers == null ? Map.of() : headers;
     }
 
     public InitiateHttpRequestDef(final String requestName, final HttpMethod method) {
-        this(requestName, method, List.of(), null, null, null, null);
+        this(requestName, method, List.of(), null, null, null, null, null);
     }
 
     public static InitiateHttpRequestBuilder of(final String requestName, final HttpMethod method, final String uri) {
@@ -115,6 +118,8 @@ public record InitiateHttpRequestDef(String requestName,
         private static final String METHOD_KEY = "METHOD";
 
         private static final String CHECKS_KEY = "CHECKS";
+
+        private static final String CONTENT = "CONTENT";
 
         private static final String STACK_USER_CONFIG_KEY = "STACK_USER_CONFIG";
 
@@ -200,8 +205,12 @@ public record InitiateHttpRequestDef(String requestName,
         }
 
         @Override
-        public InitiateHttpRequestBuilder content(final Map<String, Object> content) {
-            throw new RuntimeException("not yet implemented");
+        public InitiateHttpRequestBuilder content(final Map<String, String> content) {
+            assertNotNull(content);
+            assertArgument(!content.isEmpty());
+            final Map<String, Expression> exprMap = new HashMap<>();
+            content.entrySet().stream().forEach(e -> exprMap.put(e.getKey(), Expression.of(e.getValue())));
+            return extend(CONTENT, Content.of(exprMap));
         }
 
         @Override
@@ -219,11 +228,13 @@ public record InitiateHttpRequestDef(String requestName,
             final var method = (HttpMethod) values.get(METHOD_KEY);
             final var checks = (List<Check<HttpResponse>>) values.get(CHECKS_KEY);
 
+            final Optional<Content<?>> content = Optional.ofNullable((Content<?>) values.get(CONTENT));
+
             assertNotNull(method, "You must specify the method of the request");
 
             // TODO
             final var config = new HttpStackUserConfig();
-            return new InitiateHttpRequestDef(requestName, method, checks, Optional.ofNullable(baseUrl), Optional.ofNullable(target), headers, config);
+            return new InitiateHttpRequestDef(requestName, method, checks, Optional.ofNullable(baseUrl), Optional.ofNullable(target), headers, content, config);
         }
 
         @Override

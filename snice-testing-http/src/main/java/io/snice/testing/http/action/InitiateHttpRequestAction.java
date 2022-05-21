@@ -1,11 +1,14 @@
 package io.snice.testing.http.action;
 
+import io.snice.codecs.codec.http.HttpMessage;
 import io.snice.codecs.codec.http.HttpRequest;
 import io.snice.identity.sri.ActionResourceIdentifier;
 import io.snice.testing.core.Execution;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.action.Action;
+import io.snice.testing.core.common.Expression;
 import io.snice.testing.core.common.ListOperations;
+import io.snice.testing.http.Content;
 import io.snice.testing.http.InitiateHttpRequestDef;
 import io.snice.testing.http.protocol.HttpProtocol;
 import io.snice.testing.http.response.ResponseProcessor;
@@ -13,7 +16,9 @@ import io.snice.testing.http.stack.HttpStack;
 
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public record InitiateHttpRequestAction(String name,
                                         ActionResourceIdentifier sri,
@@ -49,7 +54,16 @@ public record InitiateHttpRequestAction(String name,
     private static HttpRequest map(final Session session, final InitiateHttpRequestDef def, final URL target) throws URISyntaxException {
         final var builder = HttpRequest.create(def.method(), target.toURI());
         def.headers().entrySet().forEach(entry -> builder.header(entry.getKey(), entry.getValue().apply(session)));
+        def.content().ifPresent(content -> processContent(session, content, builder));
         return builder.build();
+    }
+
+    private static void processContent(final Session session, final Content content, final HttpMessage.Builder<HttpRequest> builder) {
+        // TODO: right now we assume that the Content is only a map
+        final Map<String, Expression> params = (Map<String, Expression>) content.content();
+        final Map<String, String> processed = new HashMap<>();
+        params.entrySet().stream().forEach(e -> processed.put(e.getKey(), e.getValue().apply(session)));
+        builder.content(processed);
     }
 
     private Session processResolveUriError(final Session session, final String errorMsg) {

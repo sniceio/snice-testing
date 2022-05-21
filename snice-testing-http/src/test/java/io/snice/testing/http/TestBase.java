@@ -107,7 +107,7 @@ public class TestBase {
             map.put(headers[i], Expression.of(headers[i + 1]));
         }
         final var config = new HttpStackUserConfig();
-        return new InitiateHttpRequestDef("Unit Testing", HttpMethod.GET, List.of(), baseExp, null, map, config);
+        return new InitiateHttpRequestDef("Unit Testing", HttpMethod.GET, List.of(), baseExp, null, map, null, config);
     }
 
     /**

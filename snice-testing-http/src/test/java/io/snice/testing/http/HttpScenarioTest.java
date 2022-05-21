@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Map;
+
 import static io.snice.testing.core.CoreDsl.scenario;
 import static io.snice.testing.http.HttpDsl.http;
 import static io.snice.testing.http.check.HttpCheckSupport.header;
@@ -19,9 +21,9 @@ public class HttpScenarioTest {
     public void buildHttpBasicScenario() throws InterruptedException {
         final var config = new SniceConfig();
 
-        final var port = 80;
+        final var port = 5555;
         final var http = http(config)
-                .baseUrl("https://example.com:" + port);
+                .baseUrl("http://127.0.0.1:" + port);
 
         final var webhook = http("Accept Webhook")
                 .accept(HttpMethod.POST, "/whatever")
@@ -47,6 +49,12 @@ public class HttpScenarioTest {
          .header("Connection", "Close")
          */
 
+        // Issue a POST with form-encoded data where one is the webhook
+        final var installWebhook = http("Install My Webhook")
+                .post("/")
+                .content(Map.of("webhook", "${my webhook}"))
+                .check(status().is(200));
+
         final var listRepos = http("Example.com")
                 .get("/")
                 .asJson()
@@ -54,13 +62,14 @@ public class HttpScenarioTest {
                 .check(status().is(200).saveAs("hello_status"));
 
         final var scenario = scenario("My First Scenario")
-                .executeAsync(webhook);
+                .executeAsync(webhook)
                 /*
                 .execute(session -> {
                     System.err.println("Webhook: " + session.attributes("my webhook"));
                     return session.attributes("ops", "oh man").markAsFailed();
                 })
                  */
+                .execute(installWebhook);
         // .execute(listRepos);
                 /*
                 .join("Accept Webhook")

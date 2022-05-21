@@ -58,6 +58,7 @@
     <modules>
         <module>snice-testing-core</module>
         <module>snice-testing-http</module>
+        <module>snice-testing-examples</module>
         <module>snice-testing-sip</module>
     </modules>
 

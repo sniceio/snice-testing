@@ -33,7 +33,7 @@ public class HttpDsl extends HttpCheckSupport {
         // TODO: how do you turn the SniceConfig into a http config?
         try {
             final var ip = NetworkingUtils.findPrimaryAddress().getHostAddress();
-            final var listen = new URI("https://" + ip + ":7777");
+            final var listen = new URI("http://" + ip + ":1234");
             final var lp = new NetworkInterfaceConfiguration("default", listen, null, Transport.tcp);
             final var httpConfig = new HttpConfig();
             httpConfig.setNetworkInterfaces(List.of(lp));

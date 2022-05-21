@@ -126,7 +126,6 @@ public final class Snice {
     private static Props configureScenarioSupervisor(final CountDownLatch latch) {
 
         final OnStartFunction<ScenarioSupervisorCtx, ScenarioSupervisorData> onStart = (actorCtx, ctx, data) -> {
-            System.err.println("starting the scenario supervisor!!!!");
             actorCtx.self().tell(new ScenarioSupervisorMessages.Init());
         };
 
