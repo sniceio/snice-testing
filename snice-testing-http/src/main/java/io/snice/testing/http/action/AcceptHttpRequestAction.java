@@ -21,7 +21,7 @@ public record AcceptHttpRequestAction(String name,
 
     @Override
     public void execute(final List<Execution> executions, final Session session) {
-        final var requestProcessor = new RequestProcessor(name, def.checks(), session, executions, next);
+        final var requestProcessor = new RequestProcessor(name, def, session, executions, next);
         stack.newHttpAcceptor(Duration.ofSeconds(10))
                 .onRequest(requestProcessor::onRequest)
                 .onTimeout(requestProcessor::onTimeout)

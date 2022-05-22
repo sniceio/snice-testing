@@ -69,5 +69,10 @@ public record SniceHttpProtocol(HttpConfig config,
             baseUrl = Expression.of(url);
             return this;
         }
+
+        @Override
+        public HttpProtocolBuilder auth(final String username, final String password) {
+            throw new RuntimeException("Not yet implemeneted");
+        }
     }
 }

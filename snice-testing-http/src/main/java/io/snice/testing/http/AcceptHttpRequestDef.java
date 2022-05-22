@@ -9,6 +9,7 @@ import io.snice.testing.http.stack.HttpStackUserConfig;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * The {@link AcceptHttpRequestDef} describes what to do for an incoming request, what checks to perform on that
@@ -23,6 +24,7 @@ public record AcceptHttpRequestDef(String requestName,
                                    String reasonPhrase,
                                    Map<String, Expression> headers,
                                    List<Check<HttpRequest>> checks,
+                                   Optional<Content<?>> content,
                                    String saveAs,
                                    HttpStackUserConfig config) {
 

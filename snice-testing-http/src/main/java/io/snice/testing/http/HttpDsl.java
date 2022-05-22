@@ -2,7 +2,6 @@ package io.snice.testing.http;
 
 
 import io.snice.codecs.codec.http.HttpMethod;
-import io.snice.networking.common.NetworkingUtils;
 import io.snice.networking.common.Transport;
 import io.snice.networking.config.NetworkInterfaceConfiguration;
 import io.snice.testing.core.Session;
@@ -29,12 +28,24 @@ public class HttpDsl extends HttpCheckSupport {
         // No instantiation of this class
     }
 
+    public static HttpProtocolBuilder http() {
+        return http(new SniceConfig());
+    }
+
     public static HttpProtocolBuilder http(final SniceConfig configuration) {
         // TODO: how do you turn the SniceConfig into a http config?
+        // TODO: this is wrong. We are mixing configuration of the underlying stack
+        // TODO: with the configuration the user wants as part of their http protocol.
+        // TODO: SniceConfig is really as part of the running system and nothing the user
+        // TODO: should really concern themselves with.
         try {
-            final var ip = NetworkingUtils.findPrimaryAddress().getHostAddress();
-            final var listen = new URI("http://" + ip + ":1234");
-            final var lp = new NetworkInterfaceConfiguration("default", listen, null, Transport.tcp);
+            // final var ip = NetworkingUtils.findPrimaryAddress().getHostAddress();
+            final var ip = "127.0.0.1";
+            final var listen = new URI("https://" + ip + ":1234");
+
+            // TODO: just hit the local ngrok api to fetch this automatically
+            final var vipAddress = new URI("https://6c88-135-180-42-215.ngrok.io");
+            final var lp = new NetworkInterfaceConfiguration("default", listen, vipAddress, Transport.tcp);
             final var httpConfig = new HttpConfig();
             httpConfig.setNetworkInterfaces(List.of(lp));
 

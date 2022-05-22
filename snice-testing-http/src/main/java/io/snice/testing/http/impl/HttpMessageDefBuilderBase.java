@@ -4,6 +4,7 @@ import io.snice.codecs.codec.http.HttpMessage;
 import io.snice.codecs.codec.http.HttpMethod;
 import io.snice.testing.core.check.Check;
 import io.snice.testing.core.common.Expression;
+import io.snice.testing.http.Content;
 import io.snice.testing.http.HttpMessageDefBuilder;
 
 import java.util.ArrayList;
@@ -11,6 +12,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * @param <T>
@@ -26,6 +28,8 @@ public sealed abstract class HttpMessageDefBuilderBase<T, M extends HttpMessage>
     protected static final String METHOD_KEY = "METHOD";
 
     protected static final String CHECKS_KEY = "CHECKS";
+
+    protected static final String CONTENT = "CONTENT";
 
     /**
      * There is no good way for incremental building up an immutable object in java that doesn't
@@ -47,8 +51,6 @@ public sealed abstract class HttpMessageDefBuilderBase<T, M extends HttpMessage>
      */
     protected HttpMessageDefBuilderBase(final Map<String, Object> values) {
         this.values = values;
-        // this.values = new HashMap<>();
-        // values.entrySet().stream().forEach(e -> values.put(e.getKey(), e.getValue()));
     }
 
     private static Map<String, Object> createDefaultValues(final String requestName, final HttpMethod method, final String uri) {
@@ -93,7 +95,8 @@ public sealed abstract class HttpMessageDefBuilderBase<T, M extends HttpMessage>
         final var target = (Expression) values.get(PATH_KEY);
         final var headers = (Map<String, Expression>) values.get(HEADERS_KEY);
         final var checks = (List<Check<M>>) values.get(CHECKS_KEY);
-        return internalBuild(values, requestName, method, target, headers, checks);
+        final Optional<Content<?>> content = Optional.ofNullable((Content<?>) values.get(CONTENT));
+        return internalBuild(values, requestName, method, target, headers, content, checks);
     }
 
     /**
@@ -114,6 +117,7 @@ public sealed abstract class HttpMessageDefBuilderBase<T, M extends HttpMessage>
      * @param headers The HTTP headers to add to the HTTP message that will ultimately be created. If we are
      *                initiating a request, we will add these headers to the HTTP request. If we are accepting an
      *                incoming request, then these are the headers that will be added to the outgoing HTTP response.
+     * @param content an optional {@link Content}, which will be added as the body of the HTTP message.
      * @param checks  the checks to be performed. if we are the ones initiating the HTTP request, then these are checks
      *                that will performed on the HTTP response. If we are accepting an incoming HTTP request, then these
      *                checks will be performed on that HTTP request.
@@ -124,6 +128,7 @@ public sealed abstract class HttpMessageDefBuilderBase<T, M extends HttpMessage>
                                        HttpMethod method,
                                        Expression target,
                                        final Map<String, Expression> headers,
+                                       final Optional<Content<?>> content,
                                        final List<Check<M>> checks);
 
     protected abstract <T extends HttpMessageDefBuilder> T newBuilder(Map<String, Object> newValues);

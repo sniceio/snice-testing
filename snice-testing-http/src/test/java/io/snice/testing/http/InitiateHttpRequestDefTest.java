@@ -58,7 +58,7 @@ class InitiateHttpRequestDefTest extends TestBase {
      */
     @Test
     public void testCreateHttpRequestDef() {
-        final var def = new InitiateHttpRequestDef("Test", GET, List.of(), null, null, null, null, new HttpStackUserConfig());
+        final var def = new InitiateHttpRequestDef("Test", GET, null, List.of(), null, null, null, null, new HttpStackUserConfig());
         assertThat(def.baseUrl(), is(Optional.empty()));
         assertThat(def.uri(), is(Optional.empty()));
         assertThat(def.headers(), is(Map.of()));
@@ -105,7 +105,7 @@ class InitiateHttpRequestDefTest extends TestBase {
         final var protocol = someHttpProtocol(protocolBaseUrl);
         final var defBase = Optional.ofNullable(httpDefBaseUrl == null ? null : Expression.of(httpDefBaseUrl));
         final var defUri = Optional.ofNullable(httpDefUri == null ? null : Expression.of(httpDefUri));
-        final var def = new InitiateHttpRequestDef("Unit Test", GET, List.of(), defBase, defUri, null, null, new HttpStackUserConfig());
+        final var def = new InitiateHttpRequestDef("Unit Test", GET, null, List.of(), defBase, defUri, null, null, new HttpStackUserConfig());
 
         assertThat(def.resolveTarget(protocol, session).get(), is(new URL(expected)));
     }

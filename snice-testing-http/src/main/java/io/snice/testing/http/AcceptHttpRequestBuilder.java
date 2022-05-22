@@ -1,7 +1,10 @@
 package io.snice.testing.http;
 
+import io.snice.buffer.Buffer;
 import io.snice.codecs.codec.http.HttpRequest;
 import io.snice.testing.core.check.Check;
+
+import java.util.Map;
 
 public interface AcceptHttpRequestBuilder extends HttpMessageDefBuilder {
 
@@ -16,6 +19,21 @@ public interface AcceptHttpRequestBuilder extends HttpMessageDefBuilder {
     AcceptHttpRequestBuilder header(String name, String value);
 
     AcceptHttpRequestBuilder respond(int statusCode);
+
+    /**
+     * Add form-encoded data to the response. By default,
+     * a <code>Content-Type</code> header of <code>application/x-www-form-urlencoded</code>
+     * will automatically be added to the request (as will the <code>Content-Length</code> header)
+     * <p>
+     * TODO: If you do not wish this default behavior to take place, simply call XXXX and then you are in full control yourself.
+     * TODO: Should probably add the noDefaults to the HttpProtocolBuilder.
+     *
+     * @param content
+     * @return
+     */
+    AcceptHttpRequestBuilder content(Map<String, String> content);
+
+    AcceptHttpRequestBuilder content(Buffer content);
 
     AcceptHttpRequestBuilder respond(int statusCode, String reasonPhrase);
 

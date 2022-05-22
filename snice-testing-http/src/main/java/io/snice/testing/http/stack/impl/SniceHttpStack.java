@@ -114,6 +114,7 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
     }
 
     private void onHttpRequest(final HttpConnection connection, final HttpMessageEvent event) {
+        System.err.println("yeah, did actually get a request in");
         final var req = event.getHttpRequest();
         final var acceptorMaybe = mapRequest(req);
         final var resp = acceptorMaybe
@@ -289,9 +290,13 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
             }
 
             private static Transport resolveTransport(final HttpRequest req) {
+                // TLS is poorly supported by Snice Networking right now so we'll just claim
+                // TCP but configure the Snice stack to do TLS anyway...
+                /*
                 if (req.isSecure()) {
                     return Transport.tls;
                 }
+                 */
 
                 return Transport.tcp;
             }

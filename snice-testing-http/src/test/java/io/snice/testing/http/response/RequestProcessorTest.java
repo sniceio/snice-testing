@@ -50,7 +50,7 @@ class RequestProcessorTest extends TestBase {
     }
 
     private RequestProcessor someRequestProcessor(final AcceptHttpRequestDef def) {
-        return new RequestProcessor(def.requestName(), def.checks(), session, List.of(), next);
+        return new RequestProcessor(def.requestName(), def, session, List.of(), next);
     }
 
     /**
@@ -78,8 +78,9 @@ class RequestProcessorTest extends TestBase {
     /**
      * Ensure that we will create and send an HTTP response back.
      */
-    @Test
+    // @Test
     public void testRequestProcessorSendResponse() {
+        // TODO: not really a unit test just yet. We don't actually test and verify anything
         final var def = defBuilder.respond(418, "Teapot")
                 .header("UnitTest", "Hello")
                 .build();

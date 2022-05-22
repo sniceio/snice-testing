@@ -38,7 +38,18 @@ public interface HttpProtocol extends Protocol {
     Optional<Expression> baseUrl();
 
     interface HttpProtocolBuilder extends Protocol.Builder {
+
         HttpProtocolBuilder baseUrl(final String url);
+
+        /**
+         * Basic HTTP Authorization, which will be applied for all outgoing HTTP requests
+         * unless explicitly overridden by the request itself (including no-auth);
+         *
+         * @param username the username to use, which is allowed to be an expression.
+         * @param password the password to use, which is allowed to be an expression.
+         * @return
+         */
+        HttpProtocolBuilder auth(String username, String password);
 
         /**
          * Should probably have a noDefaults here. See comment in

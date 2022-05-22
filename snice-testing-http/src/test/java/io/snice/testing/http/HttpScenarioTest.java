@@ -3,7 +3,6 @@ package io.snice.testing.http;
 import io.snice.codecs.codec.http.HttpMethod;
 import io.snice.testing.core.Snice;
 import io.snice.testing.core.SniceConfig;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -17,7 +16,7 @@ import static io.snice.testing.http.check.HttpCheckSupport.status;
 @ExtendWith(MockitoExtension.class)
 public class HttpScenarioTest {
 
-    @Test()
+    // @Test()
     public void buildHttpBasicScenario() throws InterruptedException {
         final var config = new SniceConfig();
 

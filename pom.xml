@@ -123,6 +123,14 @@
 
             <dependency>
                 <groupId>io.snice.networking</groupId>
+                <artifactId>networking-common</artifactId>
+                <version>${io.snice.networking.version}</version>
+                <type>jar</type>
+                <scope>compile</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>io.snice.networking</groupId>
                 <artifactId>networking-app</artifactId>
                 <version>${io.snice.networking.version}</version>
                 <type>jar</type>

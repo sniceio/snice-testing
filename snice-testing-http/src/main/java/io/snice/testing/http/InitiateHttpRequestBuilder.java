@@ -44,6 +44,15 @@ public interface InitiateHttpRequestBuilder extends MessageBuilder {
     InitiateHttpRequestBuilder header(String name, String value);
 
     /**
+     * Basic HTTP Authorization
+     *
+     * @param username the username to use, which is allowed to be an expression.
+     * @param password the password to use, which is allowed to be an expression.
+     * @return
+     */
+    InitiateHttpRequestBuilder auth(String username, String password);
+
+    /**
      * Add form-encoded data with the outgoing request. By default,
      * a <code>Content-Type</code> header of <code>application/x-www-form-urlencoded</code>
      * will automatically be added to the request (as will the <code>Content-Length</code> header)
@@ -54,7 +63,7 @@ public interface InitiateHttpRequestBuilder extends MessageBuilder {
      * @param content
      * @return
      */
-    InitiateHttpRequestBuilder content(Map<String, String> content);
+    InitiateHttpRequestBuilder content(Map<String, Object> content);
 
     /**
      * Convenience method for adding the following two headers:

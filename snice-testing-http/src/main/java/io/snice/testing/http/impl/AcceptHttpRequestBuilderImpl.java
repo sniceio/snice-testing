@@ -1,5 +1,6 @@
 package io.snice.testing.http.impl;
 
+import io.snice.buffer.Buffer;
 import io.snice.codecs.codec.http.HttpMethod;
 import io.snice.codecs.codec.http.HttpRequest;
 import io.snice.testing.core.action.ActionBuilder;
@@ -7,13 +8,17 @@ import io.snice.testing.core.check.Check;
 import io.snice.testing.core.common.Expression;
 import io.snice.testing.http.AcceptHttpRequestBuilder;
 import io.snice.testing.http.AcceptHttpRequestDef;
+import io.snice.testing.http.Content;
 import io.snice.testing.http.HttpMessageDefBuilder;
 import io.snice.testing.http.action.AcceptHttpRequestActionBuilder;
 import io.snice.testing.http.stack.HttpStackUserConfig;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
+import static io.snice.preconditions.PreConditions.assertArgument;
 import static io.snice.preconditions.PreConditions.assertNotEmpty;
 import static io.snice.preconditions.PreConditions.assertNotNull;
 import static java.util.Optional.ofNullable;
@@ -52,6 +57,7 @@ public final class AcceptHttpRequestBuilderImpl extends HttpMessageDefBuilderBas
                                                  final HttpMethod method,
                                                  final Expression target,
                                                  final Map<String, Expression> headers,
+                                                 final Optional<Content<?>> content,
                                                  final List<Check<HttpRequest>> checks) {
         final var saveAs = (String) values.get(SAVE_AS_KEY);
         assertNotEmpty(saveAs, "The \"Save As\" key is empty, which should be impossible. This is an internal bug");
@@ -62,7 +68,7 @@ public final class AcceptHttpRequestBuilderImpl extends HttpMessageDefBuilderBas
 
         // TODO
         final var config = new HttpStackUserConfig();
-        return new AcceptHttpRequestDef(name, method, target, statusCode, reasonPhrase, headers, checks, saveAs, config);
+        return new AcceptHttpRequestDef(name, method, target, statusCode, reasonPhrase, headers, checks, content, saveAs, config);
     }
 
     @Override
@@ -90,6 +96,20 @@ public final class AcceptHttpRequestBuilderImpl extends HttpMessageDefBuilderBas
     public AcceptHttpRequestBuilder respond(final int statusCode, final String reasonPhrase) {
         extend(STATUS_CODE_KEY, statusCode);
         return extend(REASON_PHRASE_KEY, reasonPhrase);
+    }
+
+    @Override
+    public AcceptHttpRequestBuilder content(final Map<String, String> content) {
+        assertNotNull(content);
+        assertArgument(!content.isEmpty());
+        final Map<String, Expression> exprMap = new HashMap<>();
+        content.entrySet().stream().forEach(e -> exprMap.put(e.getKey(), Expression.of(e.getValue())));
+        return extend(CONTENT, Content.of(exprMap));
+    }
+
+    @Override
+    public AcceptHttpRequestBuilder content(final Buffer content) {
+        return extend(CONTENT, Content.of(content));
     }
 
     @Override

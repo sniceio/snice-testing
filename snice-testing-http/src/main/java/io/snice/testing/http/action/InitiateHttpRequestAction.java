@@ -53,6 +53,7 @@ public record InitiateHttpRequestAction(String name,
 
     private static HttpRequest map(final Session session, final InitiateHttpRequestDef def, final URL target) throws URISyntaxException {
         final var builder = HttpRequest.create(def.method(), target.toURI());
+        def.auth().ifPresent(auth -> auth.apply(session, builder));
         def.headers().entrySet().forEach(entry -> builder.header(entry.getKey(), entry.getValue().apply(session)));
         def.content().ifPresent(content -> processContent(session, content, builder));
         return builder.build();

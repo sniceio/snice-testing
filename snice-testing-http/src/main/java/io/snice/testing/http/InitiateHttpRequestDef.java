@@ -18,6 +18,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 import static io.snice.functional.Optionals.isAllEmpty;
@@ -30,6 +31,7 @@ import static io.snice.preconditions.PreConditions.assertNotNull;
  */
 public record InitiateHttpRequestDef(String requestName,
                                      HttpMethod method,
+                                     Optional<Auth> auth,
                                      List<Check<HttpResponse>> checks,
                                      Optional<Expression> baseUrl,
                                      Optional<Expression> uri,
@@ -40,6 +42,7 @@ public record InitiateHttpRequestDef(String requestName,
     public InitiateHttpRequestDef {
         assertNotEmpty(requestName, "The HTTP request must have a name");
         assertNotNull(method, "You must specify the HTTP Method");
+        auth = auth == null ? Optional.empty() : auth;
         baseUrl = baseUrl == null ? Optional.empty() : baseUrl;
         uri = uri == null ? Optional.empty() : uri;
         content = content == null ? Optional.empty() : content;
@@ -47,7 +50,7 @@ public record InitiateHttpRequestDef(String requestName,
     }
 
     public InitiateHttpRequestDef(final String requestName, final HttpMethod method) {
-        this(requestName, method, List.of(), null, null, null, null, null);
+        this(requestName, method, null, List.of(), null, null, null, null, null);
     }
 
     public static InitiateHttpRequestBuilder of(final String requestName, final HttpMethod method, final String uri) {
@@ -120,6 +123,8 @@ public record InitiateHttpRequestDef(String requestName,
         private static final String CHECKS_KEY = "CHECKS";
 
         private static final String CONTENT = "CONTENT";
+
+        private static final String AUTH = "AUTH";
 
         private static final String STACK_USER_CONFIG_KEY = "STACK_USER_CONFIG";
 
@@ -205,11 +210,17 @@ public record InitiateHttpRequestDef(String requestName,
         }
 
         @Override
-        public InitiateHttpRequestBuilder content(final Map<String, String> content) {
+        public InitiateHttpRequestBuilder auth(final String username, final String password) {
+            final var auth = Auth.basicAuth(Expression.of(username), Expression.of(password));
+            return extend(AUTH, auth);
+        }
+
+        @Override
+        public InitiateHttpRequestBuilder content(final Map<String, Object> content) {
             assertNotNull(content);
             assertArgument(!content.isEmpty());
             final Map<String, Expression> exprMap = new HashMap<>();
-            content.entrySet().stream().forEach(e -> exprMap.put(e.getKey(), Expression.of(e.getValue())));
+            content.entrySet().stream().forEach(e -> exprMap.put(e.getKey(), Expression.of(Objects.toString(e.getValue()))));
             return extend(CONTENT, Content.of(exprMap));
         }
 
@@ -227,14 +238,15 @@ public record InitiateHttpRequestDef(String requestName,
             final var target = (Expression) values.get(PATH_KEY);
             final var method = (HttpMethod) values.get(METHOD_KEY);
             final var checks = (List<Check<HttpResponse>>) values.get(CHECKS_KEY);
-
             final Optional<Content<?>> content = Optional.ofNullable((Content<?>) values.get(CONTENT));
+            final Optional<Auth> auth = Optional.ofNullable((Auth) values.get(AUTH));
 
             assertNotNull(method, "You must specify the method of the request");
 
             // TODO
             final var config = new HttpStackUserConfig();
-            return new InitiateHttpRequestDef(requestName, method, checks, Optional.ofNullable(baseUrl), Optional.ofNullable(target), headers, content, config);
+            return new InitiateHttpRequestDef(requestName, method, auth, checks, Optional.ofNullable(baseUrl),
+                    Optional.ofNullable(target), headers, content, config);
         }
 
         @Override

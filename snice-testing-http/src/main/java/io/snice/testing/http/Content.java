@@ -1,5 +1,8 @@
 package io.snice.testing.http;
 
+import io.snice.buffer.Buffer;
+import io.snice.codecs.codec.http.HttpMessage;
+import io.snice.testing.core.Session;
 import io.snice.testing.core.common.Expression;
 import io.snice.testing.http.impl.ContentFactory;
 
@@ -9,8 +12,14 @@ public interface Content<T> {
 
     T content();
 
+    <T extends HttpMessage> HttpMessage.Builder<T> apply(Session session, HttpMessage.Builder<T> builder);
+
     static Content<Map<String, Expression>> of(final Map<String, Expression> formEncodedParams) {
         return ContentFactory.of(formEncodedParams);
+    }
+
+    static Content<Buffer> of(final Buffer content) {
+        return ContentFactory.of(content);
     }
 
 }
