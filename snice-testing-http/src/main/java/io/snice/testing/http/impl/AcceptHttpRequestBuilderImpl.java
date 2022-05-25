@@ -13,7 +13,6 @@ import io.snice.testing.http.HttpMessageDefBuilder;
 import io.snice.testing.http.action.AcceptHttpRequestActionBuilder;
 import io.snice.testing.http.stack.HttpStackUserConfig;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -99,12 +98,10 @@ public final class AcceptHttpRequestBuilderImpl extends HttpMessageDefBuilderBas
     }
 
     @Override
-    public AcceptHttpRequestBuilder content(final Map<String, String> content) {
+    public AcceptHttpRequestBuilder content(final Map<String, Object> content) {
         assertNotNull(content);
         assertArgument(!content.isEmpty());
-        final Map<String, Expression> exprMap = new HashMap<>();
-        content.entrySet().stream().forEach(e -> exprMap.put(e.getKey(), Expression.of(e.getValue())));
-        return extend(CONTENT, Content.of(exprMap));
+        return extend(CONTENT, Content.of(content));
     }
 
     @Override

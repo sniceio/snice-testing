@@ -1,7 +1,5 @@
 package io.snice.testing.examples.twilio;
 
-import io.snice.buffer.Buffer;
-import io.snice.buffer.Buffers;
 import io.snice.codecs.codec.http.HttpHeader;
 import io.snice.codecs.codec.http.HttpMethod;
 import io.snice.testing.core.CoreDsl;
@@ -20,8 +18,8 @@ public record InitiateCall(String username,
                            String to,
                            String from) {
 
-    private static Buffer produceTwiml(final String msg) {
-        return Buffers.wrap("<Response><Say>" + msg + "</Say></Response>");
+    private static String produceTwiml(final String msg) {
+        return "<Response><Say>" + msg + "</Say></Response>";
     }
 
     public Scenario scenario() {
@@ -33,9 +31,30 @@ public record InitiateCall(String username,
                 .content(produceTwiml("Hi and welcome to this amazing demo"))
                 .header(HttpHeader.CONTENT_TYPE, "application/xml");
 
+        /**
+         * This is where we expect all the call events to be pushed as the call progresses.
+         *
+         * TODO: need to figure out a nice way to handle multiple callbacks to the same "callback".
+         * We want to (must) continue using the same callback URL so we can't generate a new
+         * callback since it will get a different URL. Need something in the builder such as:
+         * .acceptSingle()
+         * or
+         * .acceptMultiple()
+         *
+         * and then use builders for that somehow.
+         */
+        final var statusCallback = http("Call Status")
+                .accept(HttpMethod.POST)
+                .saveAs("status callback")
+                .respond(200);
+
         final Map<String, Object> content = Map.of(
                 "Url", "${twiml generator}",
-                "Timeout", 17,
+                "StatusCallback", "${status callback}",
+                // "StatusCallbackEvent", List.of("initiated", "answered", "ringing", "completed"),
+                "StatusCallbackEvent", "completed",
+                "StatusCallbackMethod", "POST",
+                "Timeout", 7,
                 "To", to,
                 "From", from);
 
@@ -43,10 +62,10 @@ public record InitiateCall(String username,
                 .post("Calls")
                 .auth(username, password)
                 .content(content)
-                .header(HttpHeader.CONTENT_TYPE, "application/xml")
                 .check(status().is(200));
 
         return CoreDsl.scenario("Twilio Initiate Call")
+                .executeAsync(statusCallback)
                 .executeAsync(twimlHook)
                 .execute(createCall);
     }
@@ -68,9 +87,11 @@ public record InitiateCall(String username,
         final var scenario = new InitiateCall(accountSid, authToken, to, from).scenario();
 
         // NOTE: that last slash is SUPER SUPER important!
+        // TODO: document this once we get to that.
         final var config = new SniceConfig();
         final var http = http(config)
                 .baseUrl("https://api.twilio.com/2010-04-01/Accounts/" + accountSid + "/");
+        // .baseUrl("https://27fd-135-180-42-215.ngrok.io/" + accountSid + "/");
         // .auth(accountSid, authToken); TODO
 
         final var snice = Snice.run(scenario)

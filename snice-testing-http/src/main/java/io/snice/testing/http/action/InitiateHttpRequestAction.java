@@ -6,7 +6,6 @@ import io.snice.identity.sri.ActionResourceIdentifier;
 import io.snice.testing.core.Execution;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.action.Action;
-import io.snice.testing.core.common.Expression;
 import io.snice.testing.core.common.ListOperations;
 import io.snice.testing.http.Content;
 import io.snice.testing.http.InitiateHttpRequestDef;
@@ -16,9 +15,7 @@ import io.snice.testing.http.stack.HttpStack;
 
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public record InitiateHttpRequestAction(String name,
                                         ActionResourceIdentifier sri,
@@ -61,10 +58,11 @@ public record InitiateHttpRequestAction(String name,
 
     private static void processContent(final Session session, final Content content, final HttpMessage.Builder<HttpRequest> builder) {
         // TODO: right now we assume that the Content is only a map
-        final Map<String, Expression> params = (Map<String, Expression>) content.content();
-        final Map<String, String> processed = new HashMap<>();
-        params.entrySet().stream().forEach(e -> processed.put(e.getKey(), e.getValue().apply(session)));
-        builder.content(processed);
+        content.apply(session, builder);
+        //final Map<String, Object> params = (Map<String, Object>) content.content();
+        //final Map<String, String> processed = new HashMap<>();
+        //params.entrySet().stream().forEach(e -> processed.put(e.getKey(), e.getValue().apply(session)));
+        //builder.content(processed);
     }
 
     private Session processResolveUriError(final Session session, final String errorMsg) {

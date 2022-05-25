@@ -18,7 +18,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 
 import static io.snice.functional.Optionals.isAllEmpty;
@@ -219,9 +218,7 @@ public record InitiateHttpRequestDef(String requestName,
         public InitiateHttpRequestBuilder content(final Map<String, Object> content) {
             assertNotNull(content);
             assertArgument(!content.isEmpty());
-            final Map<String, Expression> exprMap = new HashMap<>();
-            content.entrySet().stream().forEach(e -> exprMap.put(e.getKey(), Expression.of(Objects.toString(e.getValue()))));
-            return extend(CONTENT, Content.of(exprMap));
+            return extend(CONTENT, Content.of(content));
         }
 
         @Override

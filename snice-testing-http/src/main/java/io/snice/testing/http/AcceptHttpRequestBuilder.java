@@ -1,6 +1,7 @@
 package io.snice.testing.http;
 
 import io.snice.buffer.Buffer;
+import io.snice.buffer.Buffers;
 import io.snice.codecs.codec.http.HttpRequest;
 import io.snice.testing.core.check.Check;
 
@@ -31,9 +32,13 @@ public interface AcceptHttpRequestBuilder extends HttpMessageDefBuilder {
      * @param content
      * @return
      */
-    AcceptHttpRequestBuilder content(Map<String, String> content);
+    AcceptHttpRequestBuilder content(Map<String, Object> content);
 
     AcceptHttpRequestBuilder content(Buffer content);
+
+    default AcceptHttpRequestBuilder content(final String content) {
+        return content(Buffers.wrap(content));
+    }
 
     AcceptHttpRequestBuilder respond(int statusCode, String reasonPhrase);
 
