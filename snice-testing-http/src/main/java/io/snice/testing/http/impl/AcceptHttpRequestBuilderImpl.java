@@ -41,6 +41,12 @@ public final class AcceptHttpRequestBuilderImpl extends HttpMessageDefBuilderBas
         super(requestName, method, path);
     }
 
+    private AcceptHttpRequestBuilderImpl(final AcceptHttpRequestBuilderImpl parent,
+                                         final String requestName,
+                                         final HttpMethod method, final Expression path) {
+        super(parent, requestName, method, path);
+    }
+
     private AcceptHttpRequestBuilderImpl(final Map<String, Object> values) {
         super(values);
     }
@@ -52,6 +58,8 @@ public final class AcceptHttpRequestBuilderImpl extends HttpMessageDefBuilderBas
 
     @Override
     protected AcceptHttpRequestDef internalBuild(final Map<String, Object> values,
+                                                 final Optional<HttpMessageDefBuilderBase<AcceptHttpRequestDef, HttpRequest>> parent,
+                                                 final Optional<AcceptHttpRequestDef> child,
                                                  final String name,
                                                  final HttpMethod method,
                                                  final Expression target,
@@ -67,7 +75,9 @@ public final class AcceptHttpRequestBuilderImpl extends HttpMessageDefBuilderBas
 
         // TODO
         final var config = new HttpStackUserConfig();
-        return new AcceptHttpRequestDef(name, method, target, statusCode, reasonPhrase, headers, checks, content, saveAs, config);
+
+        final var def = new AcceptHttpRequestDef(name, method, target, statusCode, reasonPhrase, headers, checks, content, saveAs, child, config);
+        return parent.map(p -> p.build(def)).orElse(def);
     }
 
     @Override
@@ -107,6 +117,13 @@ public final class AcceptHttpRequestBuilderImpl extends HttpMessageDefBuilderBas
     @Override
     public AcceptHttpRequestBuilder content(final Buffer content) {
         return extend(CONTENT, Content.of(content));
+    }
+
+    @Override
+    public AcceptHttpRequestBuilder acceptNextRequest(final String name) {
+        final var saveAs = (String) get(SAVE_AS_KEY);
+        final var next = new AcceptHttpRequestBuilderImpl(this, name, method(), target()).saveAs(saveAs);
+        return next;
     }
 
     @Override

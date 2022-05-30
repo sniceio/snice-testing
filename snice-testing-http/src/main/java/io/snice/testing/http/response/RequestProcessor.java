@@ -47,9 +47,6 @@ public class RequestProcessor {
         final var checkResults = result.right();
         final var failedChecks = checkResults.stream().filter(CheckResult::isFailure).findAny().isPresent();
 
-        System.err.println(request);
-        request.content().ifPresent(System.err::println);
-
         session.set(result.left());
         final var execution = new Execution(name, !failedChecks, checkResults);
         executions.add(execution);

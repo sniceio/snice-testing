@@ -36,6 +36,24 @@ public interface AcceptHttpRequestBuilder extends HttpMessageDefBuilder {
 
     AcceptHttpRequestBuilder content(Buffer content);
 
+    /**
+     * There are webhooks that expect many events to be delivered across it, and we need to
+     * be able to define the behavior for each one of those events. E.g., in the Twilio API for
+     * tracking the status of a call, the webhook for those "status events" tracks the state of
+     * the call (ringing, answered, completed etc) and those are delivered over the same webhook
+     * that was registered when the call was created.
+     * <p>
+     * By calling {@link #acceptNextRequest(String)} you signal that you're done defining the behavior for the
+     * "current" request and want to move on to the next.
+     *
+     * @param name a human-readable name for the "next" request. It will be part of logging and will aid you
+     *             when you need to follow the flow of your events. Name with care. But it has nothing to do with
+     *             any business logic, so it really is only for you, the human developer (and in particular the person
+     *             being on-call at 3am).
+     * @return
+     */
+    AcceptHttpRequestBuilder acceptNextRequest(String name);
+
     default AcceptHttpRequestBuilder content(final String content) {
         return content(Buffers.wrap(content));
     }

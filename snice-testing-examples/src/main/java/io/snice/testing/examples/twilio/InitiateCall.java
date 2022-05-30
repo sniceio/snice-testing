@@ -48,6 +48,17 @@ public record InitiateCall(String username,
                 .saveAs("status callback")
                 .respond(200);
 
+        /*
+                .acceptNextRequest("In-Progress")
+                .respond(200)
+                .check(header("CallStatus").is("in-progress"))
+                .acceptNextRequest("Answered")
+                .respond(200)
+                .check(header("CallStatus").is("answered"));
+
+         */
+
+
         final Map<String, Object> content = Map.of(
                 "Url", "${twiml generator}",
                 "StatusCallback", "${status callback}",

@@ -26,6 +26,7 @@ public record AcceptHttpRequestDef(String requestName,
                                    List<Check<HttpRequest>> checks,
                                    Optional<Content<?>> content,
                                    String saveAs,
+                                   Optional<AcceptHttpRequestDef> child,
                                    HttpStackUserConfig config) {
 
     public static AcceptHttpRequestBuilder of(final String requestName, final HttpMethod method, final String uri, final String saveAs) {

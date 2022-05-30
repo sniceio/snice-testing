@@ -2,8 +2,10 @@ package io.snice.testing.http.impl;
 
 import io.snice.codecs.codec.http.HttpMessage;
 import io.snice.codecs.codec.http.HttpMethod;
+import io.snice.preconditions.PreConditions;
 import io.snice.testing.core.check.Check;
 import io.snice.testing.core.common.Expression;
+import io.snice.testing.http.AcceptHttpRequestDef;
 import io.snice.testing.http.Content;
 import io.snice.testing.http.HttpMessageDefBuilder;
 
@@ -14,10 +16,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static java.util.Optional.ofNullable;
+
 /**
  * @param <T>
  */
 public sealed abstract class HttpMessageDefBuilderBase<T, M extends HttpMessage> permits AcceptHttpRequestBuilderImpl {
+
+    protected static final String PARENT_KEY = "PARENT";
 
     protected static final String REQUEST_NAME_KEY = "REQUEST_NAME";
 
@@ -43,6 +49,17 @@ public sealed abstract class HttpMessageDefBuilderBase<T, M extends HttpMessage>
         this(createDefaultValues(requestName, method, path));
     }
 
+    protected HttpMessageDefBuilderBase(final HttpMessageDefBuilderBase<T, M> parent,
+                                        final String requestName,
+                                        final HttpMethod method,
+                                        final Expression path) {
+        this(createDefaultValues(parent, requestName, method, path));
+    }
+
+    protected Object get(final String key) {
+        return values.get(key);
+    }
+
     /**
      * NOTE: this constructor assumes that the map given to it is safe to use and has been properly
      * constructed by the sub-classes.
@@ -53,16 +70,28 @@ public sealed abstract class HttpMessageDefBuilderBase<T, M extends HttpMessage>
         this.values = values;
     }
 
-    private static Map<String, Object> createDefaultValues(final String requestName, final HttpMethod method, final String uri) {
+    private static <T, M extends HttpMessage> Map<String, Object> createDefaultValues(final HttpMessageDefBuilderBase<T, M> parent,
+                                                                                      final String requestName,
+                                                                                      final HttpMethod method,
+                                                                                      final Expression uri) {
         final var values = new HashMap<String, Object>();
+        if (parent != null) {
+            values.put(PARENT_KEY, parent);
+        }
+
         values.put(REQUEST_NAME_KEY, requestName);
         values.put(HEADERS_KEY, Collections.unmodifiableMap(new HashMap<String, Expression>()));
         values.put(METHOD_KEY, method);
         values.put(CHECKS_KEY, List.of());
-        if (uri != null && !uri.isEmpty()) {
-            values.put(PATH_KEY, Expression.of(uri));
+        if (uri != null) {
+            values.put(PATH_KEY, uri);
         }
         return values;
+    }
+
+    private static Map<String, Object> createDefaultValues(final String requestName, final HttpMethod method, final String uri) {
+        final var expression = PreConditions.checkIfEmpty(uri) ? null : Expression.of(uri);
+        return createDefaultValues(null, requestName, method, expression);
     }
 
     protected <T extends HttpMessageDefBuilder> T extendHeaders(final String name, final String value) {
@@ -90,13 +119,28 @@ public sealed abstract class HttpMessageDefBuilderBase<T, M extends HttpMessage>
     }
 
     public final T build() {
+        return build(null);
+    }
+
+    protected final T build(final T child) {
+        final Optional<HttpMessageDefBuilderBase<T, M>> parent =
+                ofNullable((HttpMessageDefBuilderBase<T, M>) values.get(PARENT_KEY));
+
         final var requestName = (String) values.get(REQUEST_NAME_KEY);
         final var method = (HttpMethod) values.get(METHOD_KEY);
         final var target = (Expression) values.get(PATH_KEY);
         final var headers = (Map<String, Expression>) values.get(HEADERS_KEY);
         final var checks = (List<Check<M>>) values.get(CHECKS_KEY);
-        final Optional<Content<?>> content = Optional.ofNullable((Content<?>) values.get(CONTENT));
-        return internalBuild(values, requestName, method, target, headers, content, checks);
+        final Optional<Content<?>> content = ofNullable((Content<?>) values.get(CONTENT));
+        return internalBuild(values, parent, ofNullable(child), requestName, method, target, headers, content, checks);
+    }
+
+    protected HttpMethod method() {
+        return (HttpMethod) values.get(METHOD_KEY);
+    }
+
+    protected Expression target() {
+        return (Expression) values.get(PATH_KEY);
     }
 
     /**
@@ -106,6 +150,10 @@ public sealed abstract class HttpMessageDefBuilderBase<T, M extends HttpMessage>
      *
      * @param values  the raw values map, in case the sub-class has something more beyond the common set of
      *                parameters for its definition.
+     * @param parent  the optional parent for those definitions that have been chained. this is (currently)
+     *                only for the {@link AcceptHttpRequestDef} where you can accept many incoming HTTP requests
+     *                as part of a chain of webhooks.
+     * @param child   an optional child definition for those definitions that allows to chain multiple together.
      * @param name    the name of the "definition/action" that is being built. It's mainly for
      *                human beings and will be included in logging, reports etc.
      * @param method  the HTTP method. When we are the ones initiating a request, this will be the method of that
@@ -119,17 +167,19 @@ public sealed abstract class HttpMessageDefBuilderBase<T, M extends HttpMessage>
      *                incoming request, then these are the headers that will be added to the outgoing HTTP response.
      * @param content an optional {@link Content}, which will be added as the body of the HTTP message.
      * @param checks  the checks to be performed. if we are the ones initiating the HTTP request, then these are checks
-     *                that will performed on the HTTP response. If we are accepting an incoming HTTP request, then these
-     *                checks will be performed on that HTTP request.
+     *                that will be performed on the HTTP response. If we are accepting an incoming HTTP request, then
+     *                these checks will be performed on that HTTP request.
      * @return
      */
     protected abstract T internalBuild(Map<String, Object> values,
+                                       Optional<HttpMessageDefBuilderBase<T, M>> parent,
+                                       final Optional<T> child,
                                        String name,
                                        HttpMethod method,
                                        Expression target,
-                                       final Map<String, Expression> headers,
-                                       final Optional<Content<?>> content,
-                                       final List<Check<M>> checks);
+                                       Map<String, Expression> headers,
+                                       Optional<Content<?>> content,
+                                       List<Check<M>> checks);
 
     protected abstract <T extends HttpMessageDefBuilder> T newBuilder(Map<String, Object> newValues);
 }
