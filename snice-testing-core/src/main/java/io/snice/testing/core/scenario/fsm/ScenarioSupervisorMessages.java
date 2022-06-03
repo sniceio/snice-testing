@@ -6,13 +6,14 @@ import io.snice.testing.core.scenario.Scenario;
 import io.snice.testing.core.scenario.ScenarioContex;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 public interface ScenarioSupervisorMessages {
 
     record Init() {
     }
 
-    record Run(Scenario scenario, Session session, ScenarioContex ctx) {
+    record Run(Scenario scenario, Session session, ScenarioContex ctx, CompletableFuture<Void> future) {
     }
 
     /**

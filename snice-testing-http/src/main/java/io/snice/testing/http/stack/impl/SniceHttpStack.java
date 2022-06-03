@@ -16,6 +16,7 @@ import io.snice.testing.http.HttpConfig;
 import io.snice.testing.http.protocol.HttpAcceptor;
 import io.snice.testing.http.protocol.HttpServerTransaction;
 import io.snice.testing.http.protocol.HttpTransaction;
+import io.snice.testing.http.response.RequestResult;
 import io.snice.testing.http.stack.HttpStack;
 import io.snice.testing.http.stack.HttpStackUserConfig;
 import org.slf4j.Logger;
@@ -114,32 +115,32 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
     }
 
     private void onHttpRequest(final HttpConnection connection, final HttpMessageEvent event) {
-        System.err.println("yeah, did actually get a request in");
+        // TODO: should perhaps give this to the ActionFsm instead since now it is a bit hard
+        // to look at the logs and see what's going on.
         final var req = event.getHttpRequest();
         final var acceptorMaybe = mapRequest(req);
-        final var resp = acceptorMaybe
+        final var result = acceptorMaybe
                 .map(acceptor -> acceptor.processRequest(event))
                 .orElseGet(SniceHttpStack::notFound);
 
-        connection.send(resp);
+        connection.send(result.response());
 
-        if (acceptorMaybe.map(DefaultHttpAcceptor::isDone).orElse(false)) {
+        if (result.isLast() && acceptorMaybe.isPresent()) {
             final var acceptor = acceptorMaybe.get();
             deRegisterHttpAcceptor(acceptor);
             acceptor.terminate();
-            connection.close();
         }
 
-        // we sent a 404 so close connection
-        if (acceptorMaybe.isEmpty()) {
+        if (result.closeConnection()) {
             connection.close();
         }
     }
 
-    private static HttpResponse notFound() {
-        return HttpResponse.create(404)
+    private static RequestResult notFound() {
+        final var notFound = HttpResponse.create(404)
                 .header(HttpHeader.CONNECTION, "Close")
                 .build();
+        return new RequestResult(notFound, true, true);
     }
 
     private void deRegisterHttpAcceptor(final DefaultHttpAcceptor acceptor) {
@@ -184,7 +185,7 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
         private final ActionResourceIdentifier sri;
         private final Duration timeout;
 
-        private BiFunction<HttpServerTransaction, HttpRequest, HttpResponse> onRequest;
+        private BiFunction<HttpServerTransaction, HttpRequest, RequestResult> onRequest;
         private Consumer<HttpAcceptor> onTimeout;
         private Consumer<HttpAcceptor> onTermination;
 
@@ -194,7 +195,7 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
         }
 
         @Override
-        public HttpAcceptor.Builder onRequest(final BiFunction<HttpServerTransaction, HttpRequest, HttpResponse> f) {
+        public HttpAcceptor.Builder onRequest(final BiFunction<HttpServerTransaction, HttpRequest, RequestResult> f) {
             assertNotNull(f);
             onRequest = f;
             return this;

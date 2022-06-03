@@ -1,7 +1,6 @@
 package io.snice.testing.http.response;
 
 import io.snice.codecs.codec.http.HttpRequest;
-import io.snice.codecs.codec.http.HttpResponse;
 import io.snice.testing.core.Execution;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.action.Action;
@@ -14,6 +13,7 @@ import io.snice.testing.http.protocol.HttpServerTransaction;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -25,10 +25,10 @@ public class RequestProcessor {
     private final String name;
     private final Action next;
 
-    private final AcceptHttpRequestDef def;
-    private final Object lock = new Object();
+    private final List<AcceptHttpRequestDef> defs;
     private final List<Execution> executions;
     private final AtomicReference<Session> session;
+    private final AtomicInteger index = new AtomicInteger(0);
 
     public RequestProcessor(final String name,
                             final AcceptHttpRequestDef def,
@@ -36,13 +36,26 @@ public class RequestProcessor {
                             final List<Execution> executions,
                             final Action next) {
         this.name = name;
-        this.def = def;
+        this.defs = unravel(def);
         this.session = new AtomicReference<>(session);
         this.executions = Collections.synchronizedList(new ArrayList<>(executions));
         this.next = next;
     }
 
-    public HttpResponse onRequest(final HttpServerTransaction transaction, final HttpRequest request) {
+    private static List<AcceptHttpRequestDef> unravel(final AcceptHttpRequestDef def) {
+        return def.child().map(child -> {
+            final var list = unravel(child);
+            list.add(0, child);
+            return list;
+        }).orElseGet(() -> {
+            final var list = new ArrayList<AcceptHttpRequestDef>();
+            list.add(def);
+            return list;
+        });
+    }
+
+    public RequestResult onRequest(final HttpServerTransaction transaction, final HttpRequest request) {
+        final var def = next();
         final var result = Check.check(request, session.get(), def.checks());
         final var checkResults = result.right();
         final var failedChecks = checkResults.stream().filter(CheckResult::isFailure).findAny().isPresent();
@@ -56,9 +69,24 @@ public class RequestProcessor {
         def.headers().entrySet().forEach(entry -> responseBuilder.header(entry.getKey(), entry.getValue().apply(currentSession)));
         def.content().ifPresent(content -> content.apply(currentSession, responseBuilder));
 
-        return responseBuilder.build();
+        // TODO: Just making it obvious but this value should be coming from the definition itself.
+        // The user should say whether we should close, or to keep it open (Assuming remote doesn't close of course)
+        final boolean closeConnection = false;
+        return new RequestResult(responseBuilder.build(), closeConnection, isLast());
     }
 
+    /**
+     * If this was the last invocation.
+     *
+     * @return
+     */
+    private boolean isLast() {
+        return index.get() >= defs.size();
+    }
+
+    private AcceptHttpRequestDef next() {
+        return defs.get(index.getAndAdd(1));
+    }
 
     public void onTimeout(final HttpAcceptor acceptor) {
         System.err.println("Ops, timeout");

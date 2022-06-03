@@ -7,10 +7,12 @@ import io.snice.testing.core.Snice;
 import io.snice.testing.core.SniceConfig;
 import io.snice.testing.core.scenario.Scenario;
 
+import java.util.List;
 import java.util.Map;
 
 import static io.snice.preconditions.PreConditions.assertNotEmpty;
 import static io.snice.testing.http.HttpDsl.http;
+import static io.snice.testing.http.check.HttpCheckSupport.header;
 import static io.snice.testing.http.check.HttpCheckSupport.status;
 
 public record InitiateCall(String username,
@@ -46,7 +48,18 @@ public record InitiateCall(String username,
         final var statusCallback = http("Call Status")
                 .accept(HttpMethod.POST)
                 .saveAs("status callback")
+                .check(header("CallStatus").is("initiated"))
+                .respond(200)
+                .acceptNextRequest("ringing")
+                .check(header("CallStatus").is("ringing"))
+                .respond(200)
+                .acceptNextRequest("answered")
+                .check(header("CallStatus").is("answered"))
+                .respond(200)
+                .acceptNextRequest("completed")
+                .check(header("CallStatus").is("completed"))
                 .respond(200);
+
 
         /*
                 .acceptNextRequest("In-Progress")
@@ -62,10 +75,10 @@ public record InitiateCall(String username,
         final Map<String, Object> content = Map.of(
                 "Url", "${twiml generator}",
                 "StatusCallback", "${status callback}",
-                // "StatusCallbackEvent", List.of("initiated", "answered", "ringing", "completed"),
-                "StatusCallbackEvent", "completed",
+                "StatusCallbackEvent", List.of("initiated", "answered", "ringing", "completed"),
+                // "StatusCallbackEvent", "completed",
                 "StatusCallbackMethod", "POST",
-                "Timeout", 7,
+                "Timeout", 17,
                 "To", to,
                 "From", from);
 
@@ -102,15 +115,16 @@ public record InitiateCall(String username,
         final var config = new SniceConfig();
         final var http = http(config)
                 .baseUrl("https://api.twilio.com/2010-04-01/Accounts/" + accountSid + "/");
-        // .baseUrl("https://27fd-135-180-42-215.ngrok.io/" + accountSid + "/");
         // .auth(accountSid, authToken); TODO
 
-        final var snice = Snice.run(scenario)
+        Snice.run(scenario)
                 .configuration(config)
                 .protocols(http)
-                .start();
+                .start()
+                .sync();
 
-        Thread.sleep(100000);
+        System.err.println("I'm out of here");
+
     }
 
 }

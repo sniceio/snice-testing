@@ -1,14 +1,13 @@
 package io.snice.testing.http.stack.impl;
 
 import io.snice.codecs.codec.http.HttpRequest;
-import io.snice.codecs.codec.http.HttpResponse;
 import io.snice.identity.sri.ActionResourceIdentifier;
 import io.snice.networking.http.event.HttpMessageEvent;
 import io.snice.testing.http.protocol.HttpAcceptor;
 import io.snice.testing.http.protocol.HttpServerTransaction;
+import io.snice.testing.http.response.RequestResult;
 
 import java.time.Duration;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
@@ -16,15 +15,13 @@ class DefaultHttpAcceptor implements HttpAcceptor {
 
     private final ActionResourceIdentifier sri;
     private final Duration timeout;
-    private final BiFunction<HttpServerTransaction, HttpRequest, HttpResponse> onRequest;
+    private final BiFunction<HttpServerTransaction, HttpRequest, RequestResult> onRequest;
     private final Consumer<HttpAcceptor> onTimeout;
     private final Consumer<HttpAcceptor> onTermination;
 
-    private final AtomicBoolean isDone = new AtomicBoolean(false);
-
     DefaultHttpAcceptor(final ActionResourceIdentifier sri,
                         final Duration timeout,
-                        final BiFunction<HttpServerTransaction, HttpRequest, HttpResponse> onRequest,
+                        final BiFunction<HttpServerTransaction, HttpRequest, RequestResult> onRequest,
                         final Consumer<HttpAcceptor> onTimeout,
                         final Consumer<HttpAcceptor> onTermination) {
         this.sri = sri;
@@ -38,13 +35,11 @@ class DefaultHttpAcceptor implements HttpAcceptor {
         return sri;
     }
 
-    public HttpResponse processRequest(final HttpMessageEvent event) {
+    public RequestResult processRequest(final HttpMessageEvent event) {
         // TODO: a single request will result in our termination. Eventually, this acceptor needs to
         // be able to handle multiple http requests etc.
         final var transaction = new HttpServerTransactionImpl(event);
-        final var resp = onRequest.apply(transaction, event.getHttpRequest());
-        isDone.set(true);
-        return resp;
+        return onRequest.apply(transaction, event.getHttpRequest());
     }
 
     /**
@@ -54,10 +49,6 @@ class DefaultHttpAcceptor implements HttpAcceptor {
      */
     public void terminate() {
         onTermination.accept(this);
-    }
-
-    public boolean isDone() {
-        return isDone.get();
     }
 
 }

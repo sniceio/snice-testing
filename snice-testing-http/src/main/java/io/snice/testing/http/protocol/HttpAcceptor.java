@@ -4,6 +4,7 @@ import io.snice.codecs.codec.http.HttpRequest;
 import io.snice.codecs.codec.http.HttpResponse;
 import io.snice.testing.core.scenario.Scenario;
 import io.snice.testing.http.action.AcceptHttpRequestAction;
+import io.snice.testing.http.response.RequestResult;
 
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -39,7 +40,7 @@ public interface HttpAcceptor {
 
     interface Builder {
 
-        Builder onRequest(BiFunction<HttpServerTransaction, HttpRequest, HttpResponse> f);
+        Builder onRequest(BiFunction<HttpServerTransaction, HttpRequest, RequestResult> f);
 
         /**
          * If we do not receive a request within a given timeout, this {@link AcceptHttpRequestAction} will

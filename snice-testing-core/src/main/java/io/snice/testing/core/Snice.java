@@ -14,15 +14,23 @@ import io.snice.testing.core.scenario.fsm.ScenarioSupervisorCtx;
 import io.snice.testing.core.scenario.fsm.ScenarioSupervisorData;
 import io.snice.testing.core.scenario.fsm.ScenarioSupervisorFsm;
 import io.snice.testing.core.scenario.fsm.ScenarioSupervisorMessages;
+import io.snice.util.concurrent.SniceThreadFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -30,6 +38,8 @@ import java.util.stream.IntStream;
 import static io.snice.preconditions.PreConditions.assertNotNull;
 
 public final class Snice {
+
+    private static final Logger logger = LoggerFactory.getLogger(Snice.class);
 
     // TODO: make it configurable
     private static final int noOfScnSupervisors = 5;
@@ -40,6 +50,10 @@ public final class Snice {
     private final Hektor hektor;
 
     private List<ActorRef> supervisors;
+
+    private final List<CompletionStage<Void>> runningScenarios = Collections.synchronizedList(new ArrayList<>());
+
+    private final CompletableFuture<Void> doneFuture = new CompletableFuture<>();
 
     public static Builder run(final Scenario scenario) {
         return new BuilderImpl(scenario);
@@ -68,6 +82,56 @@ public final class Snice {
         this.protocols = protocols;
     }
 
+    public void sync() {
+        try {
+            doneFuture.get();
+        } catch (final InterruptedException e) {
+            e.printStackTrace();
+        } catch (final ExecutionException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void monitor() {
+        logger.info("Starting monitoring system");
+        boolean done = false;
+
+        while (!done) {
+            try {
+                if (areAllScenariosCompleted()) {
+                    done = true;
+                } else {
+                    sleep(100);
+                }
+            } catch (final Throwable t) {
+                // TODO
+                t.printStackTrace();
+            }
+        }
+
+        logger.info("All tasks completed, shutting down system");
+        doneFuture.complete(null);
+        hektor.terminate();
+
+        // TODO: stupid hektor that isn't shutting down because it isn't implemented!
+        System.exit(1);
+    }
+
+    private void sleep(final int ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (final InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private boolean areAllScenariosCompleted() {
+        return !runningScenarios.stream()
+                .map(CompletionStage::toCompletableFuture)
+                .filter(f -> !f.isDone())
+                .findFirst()
+                .isPresent();
+    }
 
     private Snice run() throws InterruptedException {
 
@@ -91,9 +155,14 @@ public final class Snice {
                 .map(i -> hektor.actorOf("ScenarioSupervisor-" + i, scnSupervisorProps))
                 .collect(Collectors.toList());
 
+        // TODO: what to do if the supervisors doesn't start?
         latch.await(100, TimeUnit.MILLISECONDS);
-        runScenario(scenario);
 
+        final var future = runScenario(scenario);
+        runningScenarios.add(future);
+
+        final var threadGroup = SniceThreadFactory.withNamePrefix("main-snice-").withDaemon(true).build();
+        Executors.newSingleThreadExecutor(threadGroup).submit(() -> monitor());
         return this;
     }
 
@@ -101,12 +170,14 @@ public final class Snice {
         return supervisors.get(new Random().nextInt(noOfScnSupervisors));
     }
 
-    private void runScenario(final Scenario scenario) {
+    private CompletionStage<Void> runScenario(final Scenario scenario) {
         final var registry = configureProtocolRegistry(protocols);
         final var ctx = new ScenarioContex(registry);
         final var session = new Session(scenario.name());
 
-        nextSupervisor().tell(new ScenarioSupervisorMessages.Run(scenario, session, ctx));
+        final var future = new CompletableFuture<Void>();
+        nextSupervisor().tell(new ScenarioSupervisorMessages.Run(scenario, session, ctx, future));
+        return future;
     }
 
     private <T extends Protocol> ProtocolRegistry configureProtocolRegistry(final List<T> protocols) {
@@ -154,8 +225,7 @@ public final class Snice {
 
 
             try {
-                final var snice = new Snice(config, hektor, protocols, scenario).run();
-                return snice;
+                return new Snice(config, hektor, protocols, scenario).run();
             } catch (final Exception e) {
                 throw new RuntimeException("Unable to start Snice", e);
             }
