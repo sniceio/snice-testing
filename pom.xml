@@ -24,7 +24,7 @@
             <url>http://www.apache.org/licenses/LICENSE-2.0</url>
         </license>
     </licenses>
-    <inceptionYear>2021</inceptionYear>
+    <inceptionYear>2022</inceptionYear>
 
     <developers>
         <developer>
@@ -57,6 +57,7 @@
 
     <modules>
         <module>snice-testing-core</module>
+        <module>snice-testing-runtime</module>
         <module>snice-testing-http</module>
         <module>snice-testing-examples</module>
         <module>snice-testing-sip</module>
@@ -68,6 +69,14 @@
             <dependency>
                 <groupId>io.snice</groupId>
                 <artifactId>snice-testing-core</artifactId>
+                <version>${project.version}</version>
+                <type>jar</type>
+                <scope>compile</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>io.snice</groupId>
+                <artifactId>snice-testing-runtime</artifactId>
                 <version>${project.version}</version>
                 <type>jar</type>
                 <scope>compile</scope>
