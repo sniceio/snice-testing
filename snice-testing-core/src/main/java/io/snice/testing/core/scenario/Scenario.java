@@ -29,7 +29,6 @@ public record Scenario(ScenarioResourceIdentifier uuid, String name, List<Action
 
     public Scenario(final String name, final List<ActionBuilder> actions) {
         this(ScenarioResourceIdentifier.of(), name, actions);
-
     }
 
     /**

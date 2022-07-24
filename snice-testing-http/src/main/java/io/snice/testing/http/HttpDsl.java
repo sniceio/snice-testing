@@ -5,7 +5,6 @@ import io.snice.codecs.codec.http.HttpMethod;
 import io.snice.networking.common.Transport;
 import io.snice.networking.config.NetworkInterfaceConfiguration;
 import io.snice.testing.core.Session;
-import io.snice.testing.core.SniceConfig;
 import io.snice.testing.http.check.HttpCheckSupport;
 import io.snice.testing.http.protocol.HttpProtocol;
 import io.snice.testing.http.protocol.HttpProtocol.HttpProtocolBuilder;
@@ -29,15 +28,18 @@ public class HttpDsl extends HttpCheckSupport {
     }
 
     public static HttpProtocolBuilder http() {
-        return http(new SniceConfig());
+        return http(new HttpConfig());
     }
 
-    public static HttpProtocolBuilder http(final SniceConfig configuration) {
+    public static HttpProtocolBuilder http(final HttpConfig config) {
         // TODO: how do you turn the SniceConfig into a http config?
         // TODO: this is wrong. We are mixing configuration of the underlying stack
         // TODO: with the configuration the user wants as part of their http protocol.
         // TODO: SniceConfig is really as part of the running system and nothing the user
         // TODO: should really concern themselves with.
+
+        // TODO: note that I changed the aboce from SniceConfig to HttpConfig and then
+        // we'll need to figure out how to get that HttpConfig into this DSL...
         try {
             // final var ip = NetworkingUtils.findPrimaryAddress().getHostAddress();
             final var ip = "127.0.0.1";
@@ -46,10 +48,9 @@ public class HttpDsl extends HttpCheckSupport {
             // TODO: just hit the local ngrok api to fetch this automatically
             final var vipAddress = new URI("https://ce10-135-180-42-215.ngrok.io");
             final var lp = new NetworkInterfaceConfiguration("default", listen, vipAddress, Transport.tcp);
-            final var httpConfig = new HttpConfig();
-            httpConfig.setNetworkInterfaces(List.of(lp));
+            config.setNetworkInterfaces(List.of(lp));
 
-            return HttpProtocol.from(httpConfig);
+            return HttpProtocol.from(config);
         } catch (final URISyntaxException e) {
             // TODO
             throw new RuntimeException(e);

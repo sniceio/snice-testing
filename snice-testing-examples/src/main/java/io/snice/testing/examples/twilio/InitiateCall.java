@@ -3,8 +3,6 @@ package io.snice.testing.examples.twilio;
 import io.snice.codecs.codec.http.HttpHeader;
 import io.snice.codecs.codec.http.HttpMethod;
 import io.snice.testing.core.CoreDsl;
-import io.snice.testing.core.Snice;
-import io.snice.testing.core.SniceConfig;
 import io.snice.testing.core.scenario.Scenario;
 
 import java.util.List;
@@ -35,15 +33,6 @@ public record InitiateCall(String username,
 
         /**
          * This is where we expect all the call events to be pushed as the call progresses.
-         *
-         * TODO: need to figure out a nice way to handle multiple callbacks to the same "callback".
-         * We want to (must) continue using the same callback URL so we can't generate a new
-         * callback since it will get a different URL. Need something in the builder such as:
-         * .acceptSingle()
-         * or
-         * .acceptMultiple()
-         *
-         * and then use builders for that somehow.
          */
         final var statusCallback = http("Call Status")
                 .accept(HttpMethod.POST)
@@ -59,18 +48,6 @@ public record InitiateCall(String username,
                 .acceptNextRequest("completed")
                 .check(header("CallStatus").is("completed"))
                 .respond(200);
-
-
-        /*
-                .acceptNextRequest("In-Progress")
-                .respond(200)
-                .check(header("CallStatus").is("in-progress"))
-                .acceptNextRequest("Answered")
-                .respond(200)
-                .check(header("CallStatus").is("answered"));
-
-         */
-
 
         final Map<String, Object> content = Map.of(
                 "Url", "${twiml generator}",
@@ -112,11 +89,10 @@ public record InitiateCall(String username,
 
         // NOTE: that last slash is SUPER SUPER important!
         // TODO: document this once we get to that.
-        final var config = new SniceConfig();
-        final var http = http(config)
-                .baseUrl("https://api.twilio.com/2010-04-01/Accounts/" + accountSid + "/");
+        final var http = http().baseUrl("https://api.twilio.com/2010-04-01/Accounts/" + accountSid + "/");
         // .auth(accountSid, authToken); TODO
 
+        /*
         Snice.run(scenario)
                 .configuration(config)
                 .protocols(http)
@@ -124,6 +100,7 @@ public record InitiateCall(String username,
                 .sync();
 
         System.err.println("I'm out of here");
+         */
 
     }
 

@@ -22,6 +22,14 @@
 
         <dependency>
             <groupId>io.snice</groupId>
+            <artifactId>snice-testing-runtime</artifactId>
+            <version>${project.version}</version>
+            <type>jar</type>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.snice</groupId>
             <artifactId>snice-testing-http</artifactId>
         </dependency>
 
