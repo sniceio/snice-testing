@@ -56,6 +56,7 @@ public final class Snice {
     private final CompletableFuture<Void> doneFuture = new CompletableFuture<>();
 
     public static Builder run(final Scenario scenario) {
+        assertNotNull(scenario);
         return new BuilderImpl(scenario);
     }
 
