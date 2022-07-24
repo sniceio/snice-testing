@@ -3,6 +3,7 @@ package io.snice.testing.http;
 import io.snice.codecs.codec.http.HttpMethod;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.common.Expression;
+import io.snice.testing.http.stack.HttpStackUserConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -18,7 +19,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class HttpRequestDefTest extends TestBase {
+class InitiateHttpRequestDefTest extends TestBase {
 
     private Session session;
 
@@ -30,15 +31,14 @@ class HttpRequestDefTest extends TestBase {
     @Test
     public void testCreateHttpRequestDefThroughBuilder() {
 
-        final var def = HttpRequestDef.of("Unit Test Get")
+        final var def = InitiateHttpRequestDef.of("Unit Test Get", HttpMethod.GET, "/nisse")
                 .baseUrl("http://example.com")
-                .get("/nisse")
                 .header("hello", "world")
                 .build();
 
         assertThat(def.requestName(), is("Unit Test Get"));
         final var headers = def.headers();
-        assertThat(headers.size(), is(1));
+        assertHeaders(def.headers(), "hello", "world");
         assertThat(headers.get("hello").apply(session), is("world"));
 
         assertThat(def.baseUrl().get().apply(session), is("http://example.com"));
@@ -58,7 +58,7 @@ class HttpRequestDefTest extends TestBase {
      */
     @Test
     public void testCreateHttpRequestDef() {
-        final var def = new HttpRequestDef("Test", GET, List.of(), null, null, null);
+        final var def = new InitiateHttpRequestDef("Test", GET, null, List.of(), null, null, null, null, new HttpStackUserConfig());
         assertThat(def.baseUrl(), is(Optional.empty()));
         assertThat(def.uri(), is(Optional.empty()));
         assertThat(def.headers(), is(Map.of()));
@@ -71,7 +71,7 @@ class HttpRequestDefTest extends TestBase {
     @ParameterizedTest
     @CsvSource({", ", "Bad Request, ", ", GET"})
     public void testCreateHttpRequestDefBadValues(final String name, final String method) {
-        assertThrows(IllegalArgumentException.class, () -> new HttpRequestDef(name, method == null ? null : HttpMethod.valueOf(method)));
+        assertThrows(IllegalArgumentException.class, () -> new InitiateHttpRequestDef(name, method == null ? null : HttpMethod.valueOf(method)));
     }
 
     @Test
@@ -100,12 +100,12 @@ class HttpRequestDefTest extends TestBase {
         ensureResolve("http://example.com/nisse", "http://hello.com", "http://example.com", "/nisse");
     }
 
-    private void ensureResolve(final String expected, final String protocolBaseUrl, final String httpDefBaseUrl, final String httpDefUri) throws Exception {
+    private static void ensureResolve(final String expected, final String protocolBaseUrl, final String httpDefBaseUrl, final String httpDefUri) throws Exception {
         final var session = new Session("Hello");
         final var protocol = someHttpProtocol(protocolBaseUrl);
         final var defBase = Optional.ofNullable(httpDefBaseUrl == null ? null : Expression.of(httpDefBaseUrl));
         final var defUri = Optional.ofNullable(httpDefUri == null ? null : Expression.of(httpDefUri));
-        final var def = new HttpRequestDef("Unit Test", GET, List.of(), defBase, defUri, null);
+        final var def = new InitiateHttpRequestDef("Unit Test", GET, null, List.of(), defBase, defUri, null, null, new HttpStackUserConfig());
 
         assertThat(def.resolveTarget(protocol, session).get(), is(new URL(expected)));
     }

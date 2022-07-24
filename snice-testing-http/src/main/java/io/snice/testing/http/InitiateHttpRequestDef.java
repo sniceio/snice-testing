@@ -7,8 +7,9 @@ import io.snice.testing.core.Session;
 import io.snice.testing.core.action.ActionBuilder;
 import io.snice.testing.core.check.Check;
 import io.snice.testing.core.common.Expression;
-import io.snice.testing.http.action.HttpRequestActionBuilder;
+import io.snice.testing.http.action.InitiateHttpRequestActionBuilder;
 import io.snice.testing.http.protocol.HttpProtocol;
+import io.snice.testing.http.stack.HttpStackUserConfig;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -20,35 +21,45 @@ import java.util.Map;
 import java.util.Optional;
 
 import static io.snice.functional.Optionals.isAllEmpty;
+import static io.snice.preconditions.PreConditions.assertArgument;
 import static io.snice.preconditions.PreConditions.assertNotEmpty;
 import static io.snice.preconditions.PreConditions.assertNotNull;
 
-public record HttpRequestDef(String requestName,
-                             HttpMethod method,
-                             List<Check<HttpResponse>> checks,
-                             Optional<Expression> baseUrl,
-                             Optional<Expression> uri,
-                             Map<String, Expression> headers) {
+/**
+ *
+ */
+public record InitiateHttpRequestDef(String requestName,
+                                     HttpMethod method,
+                                     Optional<Auth> auth,
+                                     List<Check<HttpResponse>> checks,
+                                     Optional<Expression> baseUrl,
+                                     Optional<Expression> uri,
+                                     Map<String, Expression> headers,
+                                     Optional<Content<?>> content,
+                                     HttpStackUserConfig config) {
 
-    public HttpRequestDef {
+    public InitiateHttpRequestDef {
         assertNotEmpty(requestName, "The HTTP request must have a name");
         assertNotNull(method, "You must specify the HTTP Method");
+        auth = auth == null ? Optional.empty() : auth;
         baseUrl = baseUrl == null ? Optional.empty() : baseUrl;
         uri = uri == null ? Optional.empty() : uri;
+        content = content == null ? Optional.empty() : content;
         headers = headers == null ? Map.of() : headers;
     }
 
-    public HttpRequestDef(final String requestName, final HttpMethod method) {
-        this(requestName, method, List.of(), null, null, null);
+    public InitiateHttpRequestDef(final String requestName, final HttpMethod method) {
+        this(requestName, method, null, List.of(), null, null, null, null, null);
     }
 
-    public static HttpRequestBuilder of(final String requestName) {
+    public static InitiateHttpRequestBuilder of(final String requestName, final HttpMethod method, final String uri) {
         assertNotEmpty(requestName);
-        return new DefaultHttpRequestBuilder(requestName);
+        assertNotNull(method);
+        return new DefaultInitiateHttpRequestBuilder(requestName, method, uri);
     }
 
     /**
-     * The {@link HttpRequestDef} can optionally contain information about
+     * The {@link InitiateHttpRequestDef} can optionally contain information about
      * the target URL but if not specified, the {@link HttpProtocol#baseUrl()}
      * will be used as the target. Also, any of the components may contain a
      * dynamic {@link Expression} which will be resolved by looking up the
@@ -96,7 +107,7 @@ public record HttpRequestDef(String requestName,
         }
     }
 
-    private static class DefaultHttpRequestBuilder implements HttpRequestBuilder {
+    private static class DefaultInitiateHttpRequestBuilder implements InitiateHttpRequestBuilder {
 
         private static final String REQUEST_NAME_KEY = "REQUEST_NAME";
 
@@ -110,6 +121,12 @@ public record HttpRequestDef(String requestName,
 
         private static final String CHECKS_KEY = "CHECKS";
 
+        private static final String CONTENT = "CONTENT";
+
+        private static final String AUTH = "AUTH";
+
+        private static final String STACK_USER_CONFIG_KEY = "STACK_USER_CONFIG";
+
         /**
          * There is no good way for incremental building up an immutable object in java that doesn't
          * involve calling a constructor over and over with a massive argument list. Scala has
@@ -118,25 +135,31 @@ public record HttpRequestDef(String requestName,
          */
         private final Map<String, Object> values;
 
-        private DefaultHttpRequestBuilder(final String requestName) {
-            this(createDefaultValues(requestName));
+        private DefaultInitiateHttpRequestBuilder(final String requestName,
+                                                  final HttpMethod method,
+                                                  final String uri) {
+            this(createDefaultValues(requestName, method, uri));
         }
 
-        private static Map<String, Object> createDefaultValues(final String requestName) {
+        private static Map<String, Object> createDefaultValues(final String requestName, final HttpMethod method, final String uri) {
             final var values = new HashMap<String, Object>();
             values.put(REQUEST_NAME_KEY, requestName);
             values.put(HEADERS_KEY, Collections.unmodifiableMap(new HashMap<String, Expression>()));
-            values.put(METHOD_KEY, "GET");
+            values.put(METHOD_KEY, method);
             values.put(CHECKS_KEY, List.of());
+
+            if (uri != null && !uri.isEmpty()) {
+                values.put(PATH_KEY, Expression.of(uri));
+            }
             return values;
         }
 
-        private DefaultHttpRequestBuilder(final Map<String, Object> values) {
+        private DefaultInitiateHttpRequestBuilder(final Map<String, Object> values) {
             this.values = Collections.unmodifiableMap(values);
         }
 
         @Override
-        public HttpRequestBuilder baseUrl(final String url) {
+        public InitiateHttpRequestBuilder baseUrl(final String url) {
             assertNotEmpty(url);
             try {
                 final var expression = Expression.of(url);
@@ -154,22 +177,22 @@ public record HttpRequestDef(String requestName,
             }
         }
 
-        private DefaultHttpRequestBuilder extendHeaders(final String name, final String value) {
+        private DefaultInitiateHttpRequestBuilder extendHeaders(final String name, final String value) {
             final var headers = (Map<String, Expression>) values.get(HEADERS_KEY);
             return extend(HEADERS_KEY, extendMap(headers, name, value));
         }
 
-        private DefaultHttpRequestBuilder extendChecks(final Check<HttpResponse> check) {
+        private DefaultInitiateHttpRequestBuilder extendChecks(final Check<HttpResponse> check) {
             final var checks = (List<Check<HttpResponse>>) values.get(CHECKS_KEY);
             final var newChecks = new ArrayList<>(checks);
             newChecks.add(check);
             return extend(CHECKS_KEY, Collections.unmodifiableList(newChecks));
         }
 
-        private DefaultHttpRequestBuilder extend(final String key, final Object value) {
+        private DefaultInitiateHttpRequestBuilder extend(final String key, final Object value) {
             final var newValues = new HashMap<>(values);
             newValues.put(key, value);
-            return new DefaultHttpRequestBuilder(newValues);
+            return new DefaultInitiateHttpRequestBuilder(newValues);
         }
 
         private Map<String, Expression> extendMap(final Map<String, Expression> map, final String key, final String value) {
@@ -179,60 +202,53 @@ public record HttpRequestDef(String requestName,
         }
 
         @Override
-        public HttpRequestBuilder header(final String name, final String value) {
+        public InitiateHttpRequestBuilder header(final String name, final String value) {
             assertNotEmpty(name);
             assertNotEmpty(value);
             return extendHeaders(name, value);
         }
 
         @Override
-        public HttpRequestBuilder check(final Check<HttpResponse> check) {
+        public InitiateHttpRequestBuilder auth(final String username, final String password) {
+            final var auth = Auth.basicAuth(Expression.of(username), Expression.of(password));
+            return extend(AUTH, auth);
+        }
+
+        @Override
+        public InitiateHttpRequestBuilder content(final Map<String, Object> content) {
+            assertNotNull(content);
+            assertArgument(!content.isEmpty());
+            return extend(CONTENT, Content.of(content));
+        }
+
+        @Override
+        public InitiateHttpRequestBuilder check(final Check<HttpResponse> check) {
             assertNotNull(check);
             return extendChecks(check);
         }
 
         @Override
-        public HttpRequestBuilder get(final String uri) throws IllegalArgumentException {
-            assertNotEmpty(uri);
-            return extend(METHOD_KEY, "GET").extend(PATH_KEY, Expression.of(uri));
-        }
-
-        @Override
-        public HttpRequestBuilder get() {
-            return extend(METHOD_KEY, "GET");
-        }
-
-        @Override
-        public HttpRequestBuilder post(final String uri) {
-            assertNotEmpty(uri);
-            return extend(METHOD_KEY, "POST").extend(PATH_KEY, Expression.of(uri));
-        }
-
-        @Override
-        public HttpRequestBuilder post() {
-            return extend(METHOD_KEY, "POST");
-        }
-
-        @Override
-        public HttpRequestDef build() {
+        public InitiateHttpRequestDef build() {
             final var requestName = (String) values.get(REQUEST_NAME_KEY);
             final var baseUrl = (Expression) values.get(BASE_URL_KEY);
             final var headers = (Map<String, Expression>) values.get(HEADERS_KEY);
             final var target = (Expression) values.get(PATH_KEY);
-            final var method = HttpMethod.valueOf(((String) values.get(METHOD_KEY)).toUpperCase());
+            final var method = (HttpMethod) values.get(METHOD_KEY);
             final var checks = (List<Check<HttpResponse>>) values.get(CHECKS_KEY);
+            final Optional<Content<?>> content = Optional.ofNullable((Content<?>) values.get(CONTENT));
+            final Optional<Auth> auth = Optional.ofNullable((Auth) values.get(AUTH));
 
-            // actually, you don't have to specify the target since it may come from the baseUrl off of
-            // the protocol config
-            assertNotNull(target, "You must specify the target of the request");
             assertNotNull(method, "You must specify the method of the request");
 
-            return new HttpRequestDef(requestName, method, checks, Optional.ofNullable(baseUrl), Optional.ofNullable(target), headers);
+            // TODO
+            final var config = new HttpStackUserConfig();
+            return new InitiateHttpRequestDef(requestName, method, auth, checks, Optional.ofNullable(baseUrl),
+                    Optional.ofNullable(target), headers, content, config);
         }
 
         @Override
         public ActionBuilder toActionBuilder() {
-            return new HttpRequestActionBuilder(this);
+            return new InitiateHttpRequestActionBuilder(this);
         }
     }
 }

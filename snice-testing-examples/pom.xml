@@ -1,0 +1,42 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.snice</groupId>
+        <artifactId>snice-testing-parent</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+
+    <name>Super Nice Examples</name>
+    <groupId>io.snice</groupId>
+    <artifactId>snice-testing-examples</artifactId>
+    <packaging>jar</packaging>
+
+    <dependencies>
+
+        <dependency>
+            <groupId>io.snice</groupId>
+            <artifactId>snice-testing-core</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>io.snice</groupId>
+            <artifactId>snice-testing-http</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>io.snice.codecs</groupId>
+            <artifactId>codec-http</artifactId>
+        </dependency>
+
+        <!-- Test dependencies -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+</project>

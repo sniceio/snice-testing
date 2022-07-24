@@ -3,6 +3,7 @@ package io.snice.testing.core.scenario.fsm;
 import io.hektor.core.LifecycleEvent;
 import io.hektor.fsm.Definition;
 import io.hektor.fsm.FSM;
+import io.snice.identity.sri.ScenarioResourceIdentifier;
 
 import static io.snice.testing.core.scenario.fsm.ScenarioSupervisorState.INIT;
 import static io.snice.testing.core.scenario.fsm.ScenarioSupervisorState.RUNNING;
@@ -23,11 +24,14 @@ public class ScenarioSupervisorFsm {
 
         init.transitionTo(RUNNING)
                 .onEvent(ScenarioSupervisorMessages.Init.class)
-                .withAction(i -> System.err.println("initializing"));
+                .consume(); // nothing to do at the moment
 
         running.transitionTo(RUNNING)
                 .onEvent(ScenarioSupervisorMessages.Run.class)
-                .withAction((run, ctx, data) -> ctx.runScenario(run.session(), run.scenario(), run.ctx()));
+                .withAction((run, ctx, data) -> {
+                    data.storeRun(run);
+                    ctx.runScenario(run.session(), run.scenario(), run.ctx());
+                });
 
         running.transitionTo(RUNNING)
                 .onEvent(ScenarioSupervisorMessages.RunCompleted.class)
@@ -39,7 +43,7 @@ public class ScenarioSupervisorFsm {
 
         running.transitionTo(TERMINATED)
                 .onEvent(ScenarioSupervisorMessages.Terminate.class)
-                .withAction(e -> System.err.println("terminated"));
+                .consume(); // nothing to do at the moment
 
         definition = builder.build();
     }
@@ -55,6 +59,8 @@ public class ScenarioSupervisorFsm {
                                                   final ScenarioSupervisorCtx ctx,
                                                   final ScenarioSupervisorData data) {
 
-        System.err.println("Processing the death of child: " + event.getActor());
+        final var sri = ScenarioResourceIdentifier.from(event.getActor().name());
+        final var originalRun = data.removeRun(sri).orElseThrow(() -> new IllegalArgumentException("Unknown Scenario completed: " + event.getActor().name()));
+        originalRun.future().complete(null);
     }
 }

@@ -9,7 +9,6 @@ import io.snice.testing.core.Session;
 import io.snice.testing.core.scenario.Scenario;
 import io.snice.testing.core.scenario.ScenarioContex;
 
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 import static io.snice.preconditions.PreConditions.assertNotNull;
@@ -33,14 +32,13 @@ public class DefaultScenarioSupervisorCtx implements ScenarioSupervisorCtx, FsmA
     @Override
     public void runScenario(final Session session, final Scenario scenario, final ScenarioContex ctx) {
         final var props = configureScenarioFsm(session, scenario, ctx);
-        final var scnActor = ctx().actorOf(scenario.name(), props);
+        final var scnActor = ctx().actorOf(scenario.uuid().asString(), props);
     }
 
-
     private Props configureScenarioFsm(final Session session, final Scenario scenario, final ScenarioContex scenarioContext) {
-        final var scenarioData = new ScenarioData(scenario);
+        final var scenarioData = new ScenarioData();
         final OnStartFunction<ScenarioFsmContext, ScenarioData> onStart = (actorCtx, ctx, data) -> {
-            actorCtx.self().tell(new ScenarioMessage.Exec(List.of(), session));
+            actorCtx.self().tell(new ScenarioMessage.Init(session, scenario));
         };
 
         return FsmActor.of(ScenarioFsm.definition)

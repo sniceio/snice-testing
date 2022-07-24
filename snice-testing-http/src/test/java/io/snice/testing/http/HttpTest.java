@@ -1,5 +1,6 @@
 package io.snice.testing.http;
 
+import io.snice.testing.core.common.Expression;
 import io.snice.testing.http.protocol.HttpProtocol;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,7 +19,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 public class HttpTest {
 
     /**
-     * The {@link HttpRequestBuilder} is immutable, which means as we add/configure the builder,
+     * The {@link InitiateHttpRequestBuilder} is immutable, which means as we add/configure the builder,
      * we will continue to get a new instance. As such, once we build it we should actually have
      * different values.
      */
@@ -29,18 +30,16 @@ public class HttpTest {
         // System.out.println(wm.getHttpBaseUrl());
         // System.out.println(wm.getHttpPort());
         // WireMock.stubFor(WireMock.get("/hello").willReturn(ok()));
-        final var http1 = http("Fetch User Data").baseUrl(baseUrl).header("Hello", "World");
-        final var http2 = http1.get("hello");
-        final var http3 = http2.asJson();
+        final var http1 = http("Fetch User Data").get()
+                .baseUrl(baseUrl).header("Hello", "World");
+        final var http3 = http1.asJson();
 
         final var def1 = http1.build();
-        final var def2 = http2.build();
         final var def3 = http3.build();
-        final var def4 = http2.baseUrl("http://192.168.100.100").build();
+        final var def4 = http1.baseUrl("http://192.168.100.100").build();
 
         final var expectedBaseUrl = new URL(baseUrl);
         ensureUrl(def1, expectedBaseUrl);
-        ensureUrl(def2, expectedBaseUrl);
         ensureUrl(def3, expectedBaseUrl);
         ensureUrl(def4, new URL("http://192.168.100.100"));
 
@@ -50,17 +49,14 @@ public class HttpTest {
         // have produced a new builder, those headers added by "asJson" will not be
         // on our def 4
         ensureHeaderCount(def1, 1);
-        ensureHeaderCount(def2, 1);
         ensureHeaderCount(def3, 3);
         ensureHeaderCount(def4, 1);
 
         ensureHeader(def1, "Hello", "World");
-        ensureHeader(def2, "Hello", "World");
         ensureHeader(def3, "Hello", "World");
         ensureHeader(def4, "Hello", "World");
 
         ensureHeaderDoesNotExist(def1, "Accept", "Content-Type");
-        ensureHeaderDoesNotExist(def2, "Accept", "Content-Type");
         ensureHeaderDoesNotExist(def4, "Accept", "Content-Type");
 
         // but they do exist for the definition built by http3
@@ -68,20 +64,25 @@ public class HttpTest {
         ensureHeader(def3, "Content-Type", "application/json");
     }
 
-    private void ensureHeader(final HttpRequestDef def, final String name, final String expectedValue) {
-        assertThat(def.headers().get(name), is(expectedValue));
+    private void ensureHeader(final InitiateHttpRequestDef def, final String name, final String expectedValue) {
+        final var headerExpression = def.headers().get(name);
+        assertThat(headerExpression.isStatic(), is(true));
+        assertThat(headerExpression, is(Expression.of(expectedValue)));
     }
 
-    private void ensureHeaderDoesNotExist(final HttpRequestDef def, final String... names) {
+    private void ensureHeaderDoesNotExist(final InitiateHttpRequestDef def, final String... names) {
         Arrays.asList(names).forEach(name -> assertThat(def.headers().get(name), is(nullValue())));
     }
 
-    private void ensureHeaderCount(final HttpRequestDef def, final int expected) {
+    private void ensureHeaderCount(final InitiateHttpRequestDef def, final int expected) {
         assertThat(def.headers().size(), is(expected));
     }
 
-    private void ensureUrl(final HttpRequestDef def, final URL expected) {
-        assertThat(def.baseUrl().get(), is(expected));
+    private void ensureUrl(final InitiateHttpRequestDef def, final URL expected) {
+        // for our tests, all (so far) are static expressions.
+        final var expression = def.baseUrl().get();
+        assertThat(expression.isStatic(), is(true));
+        assertThat(expression, is(Expression.of(expected.toString())));
 
     }
 }

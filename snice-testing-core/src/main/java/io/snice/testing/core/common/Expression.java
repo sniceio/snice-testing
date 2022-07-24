@@ -10,7 +10,10 @@ public sealed interface Expression permits Expression.DynamicExpression, Express
     static Expression of(final String expression) {
         assertNotEmpty(expression);
 
-        // TODO: don't assume all is static.
+        // for now, super simple:
+        if (expression.startsWith("${") && expression.endsWith("}")) {
+            return new DynamicExpression(expression);
+        }
         return new StaticExpression(expression);
     }
 
@@ -26,10 +29,15 @@ public sealed interface Expression permits Expression.DynamicExpression, Express
 
     final record DynamicExpression(String value) implements Expression {
 
+        public DynamicExpression {
+            value = value.substring(2, value.length() - 1);
+        }
+
         @Override
         public String apply(final Session s) {
             assertNotNull(s);
-            throw new RuntimeException("Not yet implemented");
+            return s.attributes(value).map(Object::toString).orElseThrow(() -> new IllegalStateException("Unable to resolve key \"" +
+                    value + "\" as it is not part of the Session"));
         }
 
         @Override

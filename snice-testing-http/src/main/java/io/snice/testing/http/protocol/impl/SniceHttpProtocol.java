@@ -1,11 +1,14 @@
 package io.snice.testing.http.protocol.impl;
 
 import io.snice.codecs.codec.http.HttpProvider;
+import io.snice.identity.sri.ActionResourceIdentifier;
 import io.snice.networking.http.impl.NettyHttpMessageFactory;
 import io.snice.testing.core.common.Expression;
 import io.snice.testing.core.protocol.ProtocolRegistry;
 import io.snice.testing.http.HttpConfig;
 import io.snice.testing.http.protocol.HttpProtocol;
+import io.snice.testing.http.stack.HttpStack;
+import io.snice.testing.http.stack.HttpStackUserConfig;
 import io.snice.testing.http.stack.impl.SniceHttpStack;
 
 import java.util.Optional;
@@ -39,6 +42,10 @@ public record SniceHttpProtocol(HttpConfig config,
         stack.stop();
     }
 
+    @Override
+    public HttpStack newStack(final ActionResourceIdentifier sri, final HttpStackUserConfig config) {
+        return stack.newStack(sri, config);
+    }
 
     private static class SniceNetworkingHttpBuilder implements HttpProtocolBuilder {
 
@@ -61,6 +68,11 @@ public record SniceHttpProtocol(HttpConfig config,
         public HttpProtocolBuilder baseUrl(final String url) {
             baseUrl = Expression.of(url);
             return this;
+        }
+
+        @Override
+        public HttpProtocolBuilder auth(final String username, final String password) {
+            throw new RuntimeException("Not yet implemeneted");
         }
     }
 }
