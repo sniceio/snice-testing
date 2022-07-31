@@ -7,6 +7,7 @@ import io.snice.testing.core.Execution;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.action.Action;
 import io.snice.testing.core.common.ListOperations;
+import io.snice.testing.core.protocol.ProtocolRegistry;
 import io.snice.testing.http.Content;
 import io.snice.testing.http.InitiateHttpRequestDef;
 import io.snice.testing.http.protocol.HttpProtocol;
@@ -16,6 +17,7 @@ import io.snice.testing.http.stack.HttpStack;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.List;
+import java.util.Optional;
 
 public record InitiateHttpRequestAction(String name,
                                         ActionResourceIdentifier sri,
@@ -23,6 +25,11 @@ public record InitiateHttpRequestAction(String name,
                                         HttpStack stack,
                                         InitiateHttpRequestDef httpDef,
                                         Action next) implements Action {
+
+    @Override
+    public Optional<ProtocolRegistry.Key> protocol() {
+        return Optional.of(HttpProtocol.httpProtocolKey);
+    }
 
     @Override
     public void execute(final List<Execution> executions, final Session session) {

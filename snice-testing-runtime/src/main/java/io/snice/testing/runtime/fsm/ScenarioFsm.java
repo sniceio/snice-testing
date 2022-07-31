@@ -249,7 +249,7 @@ public class ScenarioFsm {
 
     /**
      * Whenever we enter the EXEC state we will fetch the next action and ask the {@link ScenarioFsmContext}
-     * to execute it. If there are no more actions to execute, we'll simple issue a message
+     * to execute it. If there are no more actions to execute, we'll simply issue a message
      * stating as much, which will allow us to transition to the next state.
      */
     private static void onEnterExec(final ScenarioFsmContext ctx, final ScenarioData data) {

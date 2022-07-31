@@ -3,6 +3,7 @@ package io.snice.testing.http;
 import io.snice.codecs.codec.http.HttpResponse;
 import io.snice.testing.core.MessageBuilder;
 import io.snice.testing.core.check.Check;
+import io.snice.testing.core.protocol.ProtocolRegistry;
 import io.snice.testing.http.protocol.HttpProtocol;
 
 import java.util.Map;
@@ -20,6 +21,11 @@ import java.util.Map;
  * TODO: add examples
  */
 public interface InitiateHttpRequestBuilder extends MessageBuilder {
+
+    @Override
+    default ProtocolRegistry.Key protocol() {
+        return HttpProtocol.httpProtocolKey;
+    }
 
     /**
      * Specify the base URL for built off of this {@link InitiateHttpRequestBuilder}.

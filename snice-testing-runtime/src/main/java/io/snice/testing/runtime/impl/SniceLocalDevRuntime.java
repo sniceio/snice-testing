@@ -5,8 +5,12 @@ import io.hektor.actors.fsm.OnStartFunction;
 import io.hektor.core.ActorRef;
 import io.hektor.core.Hektor;
 import io.hektor.core.Props;
+import io.snice.testing.core.CoreDsl;
+import io.snice.testing.core.MessageBuilder;
 import io.snice.testing.core.Session;
+import io.snice.testing.core.action.ActionBuilder;
 import io.snice.testing.core.protocol.Protocol;
+import io.snice.testing.core.protocol.ProtocolProvider;
 import io.snice.testing.core.protocol.ProtocolRegistry;
 import io.snice.testing.core.scenario.Scenario;
 import io.snice.testing.core.scenario.ScenarioContex;
@@ -33,8 +37,13 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
+import static io.snice.preconditions.PreConditions.assertArrayNotEmpty;
+import static io.snice.preconditions.PreConditions.assertNotNull;
+import static java.util.stream.Collectors.toList;
 
 public class SniceLocalDevRuntime implements SniceRuntime {
 
@@ -54,6 +63,11 @@ public class SniceLocalDevRuntime implements SniceRuntime {
 
     SniceLocalDevRuntime(final Hektor hektor) {
         this.hektor = hektor;
+    }
+
+    @Override
+    public Future<Void> sync() {
+        return doneFuture;
     }
 
     private boolean waitForFirstTaskToBeScheduled() {
@@ -80,6 +94,7 @@ public class SniceLocalDevRuntime implements SniceRuntime {
                     }
                 } catch (final Throwable t) {
                     // TODO
+                    done = true;
                     t.printStackTrace();
                 }
             }
@@ -88,6 +103,7 @@ public class SniceLocalDevRuntime implements SniceRuntime {
         } else {
             logger.info("No tasks were ever scheduled, shutting down system");
         }
+        sleep(10000);
         doneFuture.complete(null);
         hektor.terminate();
 
@@ -113,7 +129,9 @@ public class SniceLocalDevRuntime implements SniceRuntime {
     }
 
     @Override
-    public Future<Void> start() {
+    public Future<SniceRuntime> start() {
+
+        final var startFuture = new CompletableFuture<SniceRuntime>();
 
         // TODO: after re-structuring and moving this from the Snice main class, the below comments
         // TODO: will have to be revisited. Overall they kind of apply but even so, take the below as
@@ -137,7 +155,7 @@ public class SniceLocalDevRuntime implements SniceRuntime {
         final var scnSupervisorProps = configureScenarioSupervisor(latch);
         supervisors = IntStream.range(0, noOfScnSupervisors).boxed()
                 .map(i -> hektor.actorOf("ScenarioSupervisor-" + i, scnSupervisorProps))
-                .collect(Collectors.toList());
+                .collect(toList());
 
         // TODO: what to do if the supervisors doesn't start?
         try {
@@ -149,18 +167,98 @@ public class SniceLocalDevRuntime implements SniceRuntime {
         final var threadGroup = SniceThreadFactory.withNamePrefix("main-snice-").withDaemon(true).build();
         Executors.newSingleThreadExecutor(threadGroup).submit(() -> monitor());
 
-        return doneFuture;
+        // TODO: This obviously is not how you do it. Need to kick off the above in a different thread etc.
+        startFuture.complete(null);
+        return startFuture;
     }
 
     @Override
-    public CompletionStage<Void> runScenario(final Scenario scenario, final List<Protocol> protocols) {
-        final var registry = configureProtocolRegistry(protocols);
+    public CompletionStage<Void> run(final Scenario scenario, final List<Protocol> protocols) {
+        return internalRun(scenario, protocols, true);
+    }
+
+    @Override
+    public CompletionStage<Void> run(final ActionBuilder builder) {
+        assertNotNull(builder);
+        return internalRun(CoreDsl.scenario("Default Scenario").execute(builder), List.of(), false);
+    }
+
+    @Override
+    public CompletionStage<Void> run(final MessageBuilder... messages) {
+        assertArrayNotEmpty(messages);
+        var scenario = CoreDsl.scenario("Default Scenario");
+        for (int i = 0; i < messages.length; ++i) {
+            scenario = scenario.execute(messages[i]);
+        }
+
+        return internalRun(scenario, List.of(), false);
+    }
+
+    /**
+     * Create the necessary components representing the environment in which the {@link Scenario}
+     * is executing and ensure that all necessary {@link Protocol}s needed by the scenario is actually
+     * configured. If we run in strict mode then if a protocol is missing, we will bail out with an error
+     * but if non-strict mode then we'll try and create a default protocol to satisfy the requirements of
+     * the {@link Scenario}.
+     *
+     * @param scenario   the scenario to run.
+     * @param protocols  the protocols to use in the scenario.
+     * @param strictMode if true then the list of protocols must satisfy all the protocols needed by the given scenario.
+     * @return
+     */
+    public CompletionStage<Void> internalRun(final Scenario scenario, final List<Protocol> protocols, final boolean strictMode) {
+        final var protocolsMap = protocols.stream().collect(Collectors.toMap(Protocol::key, Function.identity()));
+        final var requiredProtocols = scenario.protocols();
+        final var missingProtocols = requiredProtocols.stream().filter(key -> !protocolsMap.containsKey(key)).collect(toList());
+
+        if (!missingProtocols.isEmpty() && strictMode) {
+            throw new IllegalArgumentException("The following required protocol(s) for running the scenario are missing: " + missingProtocols);
+        }
+
+        createDefaultProtocols(missingProtocols).stream().forEach(p -> protocolsMap.put(p.key(), p));
+
+        final var registry = new SimpleProtocolRegistry<>(protocolsMap);
+
+        // TODO: when we are running many scenarios that are using the same underlying protocol stack (such
+        //      as an HTTP stack) the Protocol.start() must ensure that the stack isn't started again etc.
+        //      Currently, that is not the case.
+        protocolsMap.values().forEach(Protocol::start);
+
         final var ctx = new ScenarioContex(registry);
         final var session = new Session(scenario.name());
 
         final var future = new CompletableFuture<Void>();
         nextSupervisor().tell(new ScenarioSupervisorMessages.Run(scenario, session, ctx, future));
+        runningScenarios.add(future);
+        firstScenarioScheduledLatch.countDown();
         return future;
+    }
+
+    /**
+     * When not in strict mode and if there are missing protocols, create default versions of them.
+     *
+     * @param missingProtocols
+     * @return
+     */
+    private List<Protocol> createDefaultProtocols(final List<ProtocolRegistry.Key> missingProtocols) {
+
+        // so we don't have to load providers if we don't have to
+        if (missingProtocols.isEmpty()) {
+            return List.of();
+        }
+
+        final var protocolProviders = ProtocolProvider.load();
+        return missingProtocols.stream()
+                .map(key -> protocolProviders.get(key))
+                .map(Optional::ofNullable)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .map(ProtocolProvider::createDefaultProtocol)
+                .collect(Collectors.toUnmodifiableList());
+    }
+
+    private ProtocolRegistry extendRegistry(final ProtocolRegistry registry, final List<Protocol> protocols) {
+        return ((SimpleProtocolRegistry) registry).extend(protocols);
     }
 
     private ActorRef nextSupervisor() {
@@ -175,6 +273,14 @@ public class SniceLocalDevRuntime implements SniceRuntime {
 
     private static record SimpleProtocolRegistry<T extends Protocol>(
             Map<Key, T> protocols) implements ProtocolRegistry {
+
+        public SimpleProtocolRegistry<T> extend(final List<T> protocols) {
+            final var extendedProtocols = new HashMap<Key, T>();
+            this.protocols.forEach((key, value) -> extendedProtocols.put(key, value));
+            protocols.forEach(p -> extendedProtocols.put(p.key(), p));
+            return new SimpleProtocolRegistry<>(extendedProtocols);
+        }
+
         @Override
         public Optional<T> protocol(final Key key) {
             return Optional.ofNullable(protocols.get(key));

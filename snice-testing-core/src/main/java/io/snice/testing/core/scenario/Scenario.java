@@ -9,13 +9,17 @@ import io.snice.testing.core.MessageBuilder;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.action.Action;
 import io.snice.testing.core.action.ActionBuilder;
+import io.snice.testing.core.protocol.Protocol;
+import io.snice.testing.core.protocol.ProtocolRegistry;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static io.snice.preconditions.PreConditions.assertArrayNotEmpty;
 import static io.snice.preconditions.PreConditions.assertNotEmpty;
@@ -29,6 +33,16 @@ public record Scenario(ScenarioResourceIdentifier uuid, String name, List<Action
 
     public Scenario(final String name, final List<ActionBuilder> actions) {
         this(ScenarioResourceIdentifier.of(), name, actions);
+    }
+
+    /**
+     * A list of all {@link Protocol}s needed in order to run this {@link Scenario}.
+     */
+    public List<ProtocolRegistry.Key> protocols() {
+        return actions.stream()
+                .filter(a -> a.protocol().isPresent())
+                .map(a -> a.protocol().get())
+                .collect(Collectors.toUnmodifiableList());
     }
 
     /**
@@ -69,11 +83,12 @@ public record Scenario(ScenarioResourceIdentifier uuid, String name, List<Action
 
     public Scenario execute(final ActionBuilder builder) {
         final var sri = ActionResourceIdentifier.of();
-        return extendActions(new InternalActionBuilderWrapper(sri, false, false, builder::build));
+        return extendActions(new InternalActionBuilderWrapper(sri, builder.protocol(), false, false, builder::build));
     }
 
     public Scenario execute(final MessageBuilder message) {
-        return extendActions(new InternalActionBuilderWrapper(ActionResourceIdentifier.of(), false, false,
+        return extendActions(new InternalActionBuilderWrapper(ActionResourceIdentifier.of(),
+                Optional.of(message.protocol()), false, false,
                 (sri, ctx, action) -> message.toActionBuilder().build(sri, ctx, action)));
     }
 
@@ -82,12 +97,13 @@ public record Scenario(ScenarioResourceIdentifier uuid, String name, List<Action
     }
 
     public Scenario executeAsync(final ActionBuilder builder) {
-        return extendActions(new InternalActionBuilderWrapper(ActionResourceIdentifier.of(), true, false,
+        return extendActions(new InternalActionBuilderWrapper(ActionResourceIdentifier.of(), builder.protocol(), true, false,
                 builder::build));
     }
 
     public Scenario executeAsync(final MessageBuilder message) {
-        return extendActions(new InternalActionBuilderWrapper(ActionResourceIdentifier.of(), true, false,
+        return extendActions(new InternalActionBuilderWrapper(ActionResourceIdentifier.of(),
+                Optional.of(message.protocol()), true, false,
                 (sri, ctx, action) -> message.toActionBuilder().build(sri, ctx, action)));
     }
 
@@ -106,7 +122,7 @@ public record Scenario(ScenarioResourceIdentifier uuid, String name, List<Action
         assertNotNull(fn);
         assertArrayNotEmpty(names, "You must specify at least one Action to wait for");
 
-        return extendActions(new InternalActionBuilderWrapper(ActionResourceIdentifier.of(), false, false,
+        return extendActions(new InternalActionBuilderWrapper(ActionResourceIdentifier.of(), Optional.empty(), false, false,
                 (sri, ctx, action) -> new JoinAction(fn, sri, names)));
     }
 
@@ -123,9 +139,11 @@ public record Scenario(ScenarioResourceIdentifier uuid, String name, List<Action
     }
 
     private static record InternalActionBuilderWrapper(ActionResourceIdentifier sri,
+                                                       Optional<ProtocolRegistry.Key> protocol,
                                                        boolean isAsync,
                                                        boolean isScenario,
                                                        TriFunction<ActionResourceIdentifier, ScenarioContex, Action, Action> builder) implements InternalActionBuilder {
+
 
         InternalActionBuilderWrapper {
             assertNotNull(sri);
@@ -156,6 +174,10 @@ public record Scenario(ScenarioResourceIdentifier uuid, String name, List<Action
                                      ActionResourceIdentifier sri,
                                      String... names) implements Action {
 
+        @Override
+        public Optional<ProtocolRegistry.Key> protocol() {
+            return Optional.empty();
+        }
 
         @Override
         public String name() {
@@ -171,6 +193,11 @@ public record Scenario(ScenarioResourceIdentifier uuid, String name, List<Action
     private static record GenericSessionActionBuilder(Function<Session, Session> f) implements ActionBuilder {
 
         @Override
+        public Optional<ProtocolRegistry.Key> protocol() {
+            return Optional.empty();
+        }
+
+        @Override
         public Action build(final ActionResourceIdentifier sri, final ScenarioContex ctx, final Action next) {
             return new GenericSessionAction("generic-exec", sri, f, next);
         }
@@ -180,6 +207,11 @@ public record Scenario(ScenarioResourceIdentifier uuid, String name, List<Action
                                                ActionResourceIdentifier sri,
                                                Function<Session, Session> f,
                                                Action next) implements Action {
+
+        @Override
+        public Optional<ProtocolRegistry.Key> protocol() {
+            return Optional.empty();
+        }
 
         @Override
         public void execute(final List<Execution> executions, final Session session) {

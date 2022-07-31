@@ -1,6 +1,8 @@
 package io.snice.testing.core;
 
 import io.snice.testing.core.action.ActionBuilder;
+import io.snice.testing.core.protocol.Protocol;
+import io.snice.testing.core.protocol.ProtocolRegistry;
 
 /**
  * All protocols will send requests and those are specified through
@@ -12,6 +14,16 @@ import io.snice.testing.core.action.ActionBuilder;
  * </ul>
  */
 public interface MessageBuilder {
+
+    /**
+     * The {@link Protocol} needed to execute the message.
+     * <p>
+     * In plain English, if the resulting
+     * message is an HTTP request we will need an HTTP stack available to us or it won't work.
+     *
+     * @return
+     */
+    ProtocolRegistry.Key protocol();
 
     ActionBuilder toActionBuilder();
 }

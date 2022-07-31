@@ -4,6 +4,7 @@ import io.snice.codecs.codec.http.HttpHeader;
 import io.snice.codecs.codec.http.HttpMethod;
 import io.snice.testing.core.CoreDsl;
 import io.snice.testing.core.scenario.Scenario;
+import io.snice.testing.runtime.Snice;
 
 import java.util.List;
 import java.util.Map;
@@ -91,6 +92,8 @@ public record InitiateCall(String username,
         // TODO: document this once we get to that.
         final var http = http().baseUrl("https://api.twilio.com/2010-04-01/Accounts/" + accountSid + "/");
         // .auth(accountSid, authToken); TODO
+
+        Snice.run(scenario, http);
 
         /*
         Snice.run(scenario)

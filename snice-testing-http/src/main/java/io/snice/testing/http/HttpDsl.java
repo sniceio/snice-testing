@@ -2,6 +2,7 @@ package io.snice.testing.http;
 
 
 import io.snice.codecs.codec.http.HttpMethod;
+import io.snice.networking.common.NetworkingUtils;
 import io.snice.networking.common.Transport;
 import io.snice.networking.config.NetworkInterfaceConfiguration;
 import io.snice.testing.core.Session;
@@ -41,12 +42,12 @@ public class HttpDsl extends HttpCheckSupport {
         // TODO: note that I changed the aboce from SniceConfig to HttpConfig and then
         // we'll need to figure out how to get that HttpConfig into this DSL...
         try {
-            // final var ip = NetworkingUtils.findPrimaryAddress().getHostAddress();
-            final var ip = "127.0.0.1";
+            final var ip = NetworkingUtils.findPrimaryAddress().getHostAddress();
+            // final var ip = "127.0.0.1";
             final var listen = new URI("https://" + ip + ":1234");
 
             // TODO: just hit the local ngrok api to fetch this automatically
-            final var vipAddress = new URI("https://ce10-135-180-42-215.ngrok.io");
+            final var vipAddress = new URI("https://abcd-135-180-103-205.ngrok.io");
             final var lp = new NetworkInterfaceConfiguration("default", listen, vipAddress, Transport.tcp);
             config.setNetworkInterfaces(List.of(lp));
 
@@ -154,6 +155,15 @@ public class HttpDsl extends HttpCheckSupport {
             return initiate(HttpMethod.POST, uri);
         }
     }
+
+    public static InitiateHttpRequestBuilder get(final String uri) {
+        return http("GET").get(uri);
+    }
+
+    public static InitiateHttpRequestBuilder post(final String uri) {
+        return http("POST").post(uri);
+    }
+
 
     public static InitiateOrAcceptStep http(final String requestName) {
         ensureNotEmpty(requestName, "The name of the HTTP request cannot be empty");

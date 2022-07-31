@@ -8,11 +8,13 @@ import io.snice.identity.sri.ActionResourceIdentifier;
 import io.snice.testing.core.Execution;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.action.Action;
+import io.snice.testing.core.protocol.ProtocolRegistry;
 import io.snice.testing.core.scenario.InternalActionBuilder;
 import io.snice.testing.core.scenario.Scenario;
 import io.snice.testing.core.scenario.ScenarioContex;
 
 import java.util.List;
+import java.util.Optional;
 
 import static io.snice.preconditions.PreConditions.assertNotNull;
 
@@ -76,6 +78,11 @@ public record DefaultScenarioFsmContext(ActorRef parent,
      * as the next action to execute.
      */
     private static record NextAction(String name, ActorRef actor, ActionResourceIdentifier sri) implements Action {
+
+        @Override
+        public Optional<ProtocolRegistry.Key> protocol() {
+            return Optional.empty();
+        }
 
         @Override
         public void execute(final List<Execution> executions, final Session session) {

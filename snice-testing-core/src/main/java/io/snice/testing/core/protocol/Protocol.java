@@ -47,8 +47,14 @@ public interface Protocol {
     default void stopSession(final Session session) {
     }
 
-    static ProtocolRegistry.Key createKey(final Class<?> clazz) {
+    static ProtocolRegistry.Key createKey(final String name, final Class<?> clazz) {
         return new ProtocolRegistry.Key() {
+
+            @Override
+            public String name() {
+                return name;
+            }
+
             @Override
             public int hashCode() {
                 return clazz.hashCode();
@@ -57,6 +63,11 @@ public interface Protocol {
             @Override
             public boolean equals(final Object obj) {
                 return clazz.equals(obj);
+            }
+
+            @Override
+            public String toString() {
+                return name();
             }
         };
     }
