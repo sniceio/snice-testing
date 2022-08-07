@@ -19,6 +19,11 @@
           <artifactId>snice-commons</artifactId>
       </dependency>
 
+      <dependency>
+          <groupId>io.snice</groupId>
+          <artifactId>snice-testing-core</artifactId>
+      </dependency>
+
       <!-- Hektor.io for FSM and Actor support -->
       <dependency>
           <groupId>io.hektor</groupId>
@@ -43,6 +48,11 @@
       <dependency>
           <groupId>ch.qos.logback</groupId>
           <artifactId>logback-classic</artifactId>
+      </dependency>
+
+      <dependency>
+          <groupId>net.sourceforge.argparse4j</groupId>
+          <artifactId>argparse4j</artifactId>
       </dependency>
 
       <!-- Test dependencies -->

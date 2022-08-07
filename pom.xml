@@ -47,6 +47,7 @@
         <io.snice.codecs.version>0.0.10-SNAPSHOT</io.snice.codecs.version>
         <io.snice.networking.version>0.0.10-SNAPSHOT</io.snice.networking.version>
         <logback.version>1.2.10</logback.version>
+        <argparse4j.version>0.9.0</argparse4j.version>
         <hektor.version>0.0.5-SNAPSHOT</hektor.version>
         <maven.compiler.release>17</maven.compiler.release>
         <junit5.version>5.8.2</junit5.version>
@@ -191,6 +192,13 @@
                 <artifactId>hektor-actor-fsm</artifactId>
                 <version>${hektor.version}</version>
                 <type>jar</type>
+                <scope>compile</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>net.sourceforge.argparse4j</groupId>
+                <artifactId>argparse4j</artifactId>
+                <version>${argparse4j.version}</version>
                 <scope>compile</scope>
             </dependency>
 

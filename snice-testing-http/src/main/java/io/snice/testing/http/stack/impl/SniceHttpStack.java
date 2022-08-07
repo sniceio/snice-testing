@@ -51,6 +51,7 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
     @Override
     public void initialize(final HttpBootstrap<HttpConfig> bootstrap) {
         bootstrap.onConnection(id -> true).accept(b -> {
+            b.matchEvent(o -> true).consume(this::onApplicationEvent);
             b.match(HttpEvent::isHttpRequest).map(HttpEvent::toMessageEvent).consume(this::onHttpRequest);
             b.match(HttpEvent::isHttpResponse).map(HttpEvent::toMessageEvent).consume(SniceHttpStack::onHttpResponse);
         });
@@ -67,6 +68,10 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
         final var stack = new HttpStackWrapper(sri, config, this, address);
         stacks.put(sri, stack);
         return stack;
+    }
+
+    private void onApplicationEvent(final HttpConnection connection, final Object event) {
+        System.err.println("Snice Http Stack onAppEvent: " + event);
     }
 
     /**
@@ -235,6 +240,7 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
         private final HttpRequest request;
 
         private BiConsumer<HttpTransaction, HttpResponse> onResponseFunction;
+        private BiConsumer<HttpTransaction, Object> onEventFunction;
 
         private HttpTransactionBuilder(final HttpEnvironment<HttpConfig> env, final HttpRequest request) {
             this.env = env;
@@ -245,6 +251,13 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
         public HttpTransaction.Builder onResponse(final BiConsumer<HttpTransaction, HttpResponse> f) {
             assertNotNull(f);
             onResponseFunction = f;
+            return this;
+        }
+
+        @Override
+        public HttpTransaction.Builder onEvent(final BiConsumer<HttpTransaction, Object> f) {
+            assertNotNull(f);
+            onEventFunction = f;
             return this;
         }
 
@@ -263,9 +276,14 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
                 final var remoteHost = remoteDest.getHost();
                 final int remotePort = resolveRemotePort(request, remoteDest);
                 final var transport = resolveTransport(request);
+
+                // TODO: we may, or may not, want to share an existing connection with others. This is
+                //      currently not supported by Snice Networking but it really should be. However, in
+                //      Sncie Testing, most of the time we probably don't want to share connection outside
+                //      the same Scenario (so we get the statistics etc just for a single scenario and so on...
                 env.connect(transport, remoteHost, remotePort).thenAccept(c -> {
                     logger.debug("Successfully connected to " + remoteDest);
-                    c.createNewTransaction(request)
+                    final var transaction = c.createNewTransaction(request)
                             .onResponse((tx, resp) -> onResponse.accept(this, resp))
                             .onTransactionTimeout(tx -> logger.warn("Currently not handling the transaction timing out"))
                             .onTransactionTerminated(tx -> logger.info("HTTP Transaction terminated"))

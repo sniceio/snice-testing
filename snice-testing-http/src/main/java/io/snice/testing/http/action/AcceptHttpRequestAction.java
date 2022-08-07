@@ -4,13 +4,16 @@ import io.snice.identity.sri.ActionResourceIdentifier;
 import io.snice.testing.core.Execution;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.action.Action;
+import io.snice.testing.core.protocol.ProtocolRegistry;
 import io.snice.testing.http.AcceptHttpRequestDef;
+import io.snice.testing.http.protocol.HttpProtocol;
 import io.snice.testing.http.response.RequestProcessor;
 import io.snice.testing.http.stack.HttpStack;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public record AcceptHttpRequestAction(String name,
                                       ActionResourceIdentifier sri,
@@ -18,6 +21,11 @@ public record AcceptHttpRequestAction(String name,
                                       AcceptHttpRequestDef def,
                                       Map<String, Object> attributes,
                                       Action next) implements Action {
+
+    @Override
+    public Optional<ProtocolRegistry.Key> protocol() {
+        return Optional.of(HttpProtocol.httpProtocolKey);
+    }
 
     @Override
     public void execute(final List<Execution> executions, final Session session) {

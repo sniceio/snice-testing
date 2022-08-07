@@ -16,7 +16,7 @@ import static io.snice.preconditions.PreConditions.assertNotNull;
 
 public interface HttpProtocol extends Protocol {
 
-    ProtocolRegistry.Key httpProtocolKey = Protocol.createKey(HttpProtocol.class);
+    ProtocolRegistry.Key httpProtocolKey = Protocol.createKey("HTTP", HttpProtocol.class);
 
     static HttpProtocolBuilder from(final HttpConfig config) {
         assertNotNull(config);

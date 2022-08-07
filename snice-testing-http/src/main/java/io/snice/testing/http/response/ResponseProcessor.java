@@ -25,9 +25,6 @@ public record ResponseProcessor(String name,
         final var checkResults = result.right();
         final var failedChecks = checkResults.stream().filter(CheckResult::isFailure).findAny().isPresent();
 
-        // System.err.println(response);
-        // System.err.println(response.content().get());
-
         final var newSession = result.left();
         final var execution = new Execution(name, !failedChecks, checkResults);
         next.execute(ListOperations.extendList(executions, execution), newSession);

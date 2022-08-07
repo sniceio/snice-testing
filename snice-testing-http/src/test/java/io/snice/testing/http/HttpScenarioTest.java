@@ -1,8 +1,6 @@
 package io.snice.testing.http;
 
 import io.snice.codecs.codec.http.HttpMethod;
-import io.snice.testing.core.Snice;
-import io.snice.testing.core.SniceConfig;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -18,11 +16,9 @@ public class HttpScenarioTest {
 
     // @Test()
     public void buildHttpBasicScenario() throws InterruptedException {
-        final var config = new SniceConfig();
 
         final var port = 5555;
-        final var http = http(config)
-                .baseUrl("http://127.0.0.1:" + port);
+        final var http = http().baseUrl("http://127.0.0.1:" + port);
 
         final var webhook = http("Accept Webhook")
                 .accept(HttpMethod.POST, "/whatever")
@@ -76,12 +72,15 @@ public class HttpScenarioTest {
                  */
 
 
+        /*
         final var snice = Snice.run(scenario)
                 .configuration(config)
                 .protocols(http)
                 .start();
 
         Thread.sleep(100000);
+
+         */
 
     }
 }

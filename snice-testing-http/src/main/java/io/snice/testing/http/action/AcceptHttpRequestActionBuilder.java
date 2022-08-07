@@ -3,15 +3,22 @@ package io.snice.testing.http.action;
 import io.snice.identity.sri.ActionResourceIdentifier;
 import io.snice.testing.core.action.Action;
 import io.snice.testing.core.action.ActionBuilder;
+import io.snice.testing.core.protocol.ProtocolRegistry;
 import io.snice.testing.core.scenario.ScenarioContex;
 import io.snice.testing.http.AcceptHttpRequestBuilder;
 import io.snice.testing.http.protocol.HttpProtocol;
 
 import java.util.Map;
+import java.util.Optional;
 
 import static io.snice.preconditions.PreConditions.assertNotNull;
 
 public record AcceptHttpRequestActionBuilder(AcceptHttpRequestBuilder builder) implements ActionBuilder {
+
+    @Override
+    public Optional<ProtocolRegistry.Key> protocol() {
+        return Optional.of(HttpProtocol.httpProtocolKey);
+    }
 
     public AcceptHttpRequestActionBuilder {
         assertNotNull(builder);

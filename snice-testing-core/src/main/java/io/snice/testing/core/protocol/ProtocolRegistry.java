@@ -11,7 +11,10 @@ public interface ProtocolRegistry {
 
     interface Key {
 
+        /**
+         * Friendly human name
+         */
+        String name();
     }
     
-
 }
