@@ -24,7 +24,6 @@
           <artifactId>snice-testing-core</artifactId>
       </dependency>
 
-
       <!-- Hektor.io for FSM and Actor support -->
       <dependency>
           <groupId>io.hektor</groupId>
