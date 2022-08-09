@@ -47,7 +47,7 @@ public class HttpDsl extends HttpCheckSupport {
             final var listen = new URI("https://" + ip + ":1234");
 
             // TODO: just hit the local ngrok api to fetch this automatically
-            final var vipAddress = new URI("https://abcd-135-180-103-205.ngrok.io");
+            final var vipAddress = new URI("https://c107-135-180-103-205.ngrok.io");
             final var lp = new NetworkInterfaceConfiguration("default", listen, vipAddress, Transport.tcp);
             config.setNetworkInterfaces(List.of(lp));
 

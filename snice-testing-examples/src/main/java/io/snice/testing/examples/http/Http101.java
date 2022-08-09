@@ -3,6 +3,7 @@ package io.snice.testing.examples.http;
 import io.snice.testing.runtime.Snice;
 
 import static io.snice.testing.http.HttpDsl.get;
+import static io.snice.testing.http.HttpDsl.post;
 import static io.snice.testing.http.check.HttpCheckSupport.status;
 
 /**
@@ -15,11 +16,11 @@ public class Http101 {
 
         // 1. Create the HTTPS GET request and add any checks to it.
         final var get = get("https://example.com").check(status().is(200));
-        final var post = get("https://example.com").check(status().is(200));
+        final var post = post("https://example.com").check(status().is(200));
 
         // 2. Ask Snice to just run that GET request for you. It'll return
         //    a CompletionStage that you can use to wait for the test to finish
-        final var future = Snice.run(get, post);
+        final var future = Snice.run(get);
 
         // 3. We convert that CompletionStage to a Future so we can hang on it.
         future.toCompletableFuture().get();

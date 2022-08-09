@@ -12,8 +12,8 @@ import io.snice.testing.core.action.ActionBuilder;
 import io.snice.testing.core.protocol.Protocol;
 import io.snice.testing.core.protocol.ProtocolProvider;
 import io.snice.testing.core.protocol.ProtocolRegistry;
+import io.snice.testing.core.scenario.DefaultScenarioContext;
 import io.snice.testing.core.scenario.Scenario;
-import io.snice.testing.core.scenario.ScenarioContex;
 import io.snice.testing.runtime.SniceRuntime;
 import io.snice.testing.runtime.fsm.DefaultScenarioSupervisorCtx;
 import io.snice.testing.runtime.fsm.ScenarioSupervisorCtx;
@@ -224,7 +224,7 @@ public class SniceLocalDevRuntime implements SniceRuntime {
         //      Currently, that is not the case.
         protocolsMap.values().forEach(Protocol::start);
 
-        final var ctx = new ScenarioContex(registry);
+        final var ctx = new DefaultScenarioContext(registry);
         final var session = new Session(scenario.name());
 
         final var future = new CompletableFuture<Void>();
