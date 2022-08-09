@@ -4,6 +4,7 @@ import io.snice.codecs.codec.http.HttpHeader;
 import io.snice.codecs.codec.http.HttpRequest;
 import io.snice.codecs.codec.http.HttpResponse;
 import io.snice.identity.sri.ActionResourceIdentifier;
+import io.snice.identity.sri.ScenarioResourceIdentifier;
 import io.snice.networking.common.ConnectionId;
 import io.snice.networking.common.Transport;
 import io.snice.networking.core.ListeningPoint;
@@ -35,6 +36,7 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
 import static io.snice.preconditions.PreConditions.assertNotNull;
+import static io.snice.preconditions.PreConditions.assertNull;
 import static io.snice.testing.http.stack.impl.HttpStackUtils.extractSri;
 
 public class SniceHttpStack extends HttpApplication<HttpConfig> {
@@ -49,7 +51,9 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
     // TODO: need sane default values for the size of the map...
     private final ConcurrentMap<ActionResourceIdentifier, DefaultHttpAcceptor> acceptors = new ConcurrentHashMap<>();
 
-    private final ConcurrentMap<ConnectionId, BiConsumer<HttpTransaction, Object>> appEventCallbacks = new ConcurrentHashMap<>();
+    private final ConcurrentMap<ScenarioResourceIdentifier, BiConsumer<ConnectionId, Object>> appEventCallbacks = new ConcurrentHashMap<>();
+    private final ConcurrentMap<ConnectionId, ScenarioResourceIdentifier> connectionIdToScenarioSri = new ConcurrentHashMap<>();
+
 
     @Override
     public void initialize(final HttpBootstrap<HttpConfig> bootstrap) {
@@ -65,19 +69,27 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
         return new HttpAcceptorBuilder(sri, timeout);
     }
 
-    public HttpStack newStack(final ActionResourceIdentifier sri, final HttpStackUserConfig config) {
+    public HttpStack newStack(final ScenarioResourceIdentifier scenarioSri,
+                              final ActionResourceIdentifier actionSri,
+                              final HttpStackUserConfig config) {
+        assertNotNull(scenarioSri);
+        assertNotNull(actionSri);
         assertNotNull(config);
-        final var address = allocateNewAddress(sri, config);
-        final var stack = new HttpStackWrapper(sri, config, this, address);
-        stacks.put(sri, stack);
+        final var address = allocateNewAddress(actionSri, config);
+        final var stack = new HttpStackWrapper(scenarioSri, actionSri, config, this, address);
+        stacks.put(actionSri, stack);
         return stack;
     }
 
-    private void storeConnectionEventCallback(final ConnectionId id, final BiConsumer<HttpTransaction, Object> f) {
+    private void associate(final ConnectionId id, final ScenarioResourceIdentifier sri) {
+        connectionIdToScenarioSri.putIfAbsent(id, sri);
+    }
+
+    private void storeConnectionEventCallback(final ScenarioResourceIdentifier scenarioSri, final BiConsumer<ConnectionId, Object> f) {
         // TODO: lots of race conditions here. Events that showed up before we managed to register
         //       the callback etc. Events coming in even though we checked the outstanding events for a given
         //       ConnectionId and it was empty a second ago etc etc.
-        final var previous = appEventCallbacks.putIfAbsent(id, f);
+        final var previous = appEventCallbacks.putIfAbsent(scenarioSri, f);
         if (previous != null) {
             System.err.println("CLASH!!!");
             // TODO CLASH!
@@ -86,10 +98,11 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
 
     private void onApplicationEvent(final HttpConnection connection, final Object event) {
         System.err.println("Snice Http Stack onAppEvent: " + event);
-        final var callback = appEventCallbacks.get(connection.id());
+        final var sri = connectionIdToScenarioSri.get(connection.id());
+        final var callback = appEventCallbacks.get(sri);
         if (callback != null) {
             System.err.println("yeah, calling the callback");
-            callback.accept(null, event);
+            callback.accept(connection.id(), event);
         }
     }
 
@@ -185,7 +198,8 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
         resp.headers().forEach(System.err::println);
     }
 
-    private static record HttpStackWrapper(ActionResourceIdentifier sri,
+    private static record HttpStackWrapper(ScenarioResourceIdentifier scenarioSri,
+                                           ActionResourceIdentifier actionSri,
                                            HttpStackUserConfig config,
                                            SniceHttpStack actualStack,
                                            URL address) implements HttpStack {
@@ -195,12 +209,19 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
             // TODO: overloaded version with no timeout and then we grab from the HttpStackUserConfig? or some default?
             assertNotNull(timeout);
             // TODO: perhaps some sane timeout too? 6 hrs is probably not ok!
-            return actualStack.newHttpAcceptor(sri, timeout);
+            return actualStack.newHttpAcceptor(actionSri, timeout);
         }
 
         @Override
         public HttpTransaction.Builder newTransaction(final HttpRequest request) {
-            return actualStack.newTransaction(request);
+            final var builder = actualStack.newTransaction(request);
+            builder.applicationData(scenarioSri);
+            return builder;
+        }
+
+        @Override
+        public void onConnectionEvents(final BiConsumer<ConnectionId, Object> f) {
+            actualStack.storeConnectionEventCallback(scenarioSri, f);
         }
     }
 
@@ -260,7 +281,6 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
         private final HttpRequest request;
 
         private BiConsumer<HttpTransaction, HttpResponse> onResponseFunction;
-        private BiConsumer<HttpTransaction, Object> onEventFunction;
         private Object applicationData;
 
         private HttpTransactionBuilder(final SniceHttpStack sniceHttpStack, final HttpEnvironment<HttpConfig> env, final HttpRequest request) {
@@ -277,22 +297,15 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
         }
 
         @Override
-        public HttpTransaction.Builder onEvent(final BiConsumer<HttpTransaction, Object> f) {
-            assertNotNull(f);
-            onEventFunction = f;
-            return this;
-        }
-
-        @Override
         public HttpTransaction.Builder applicationData(final Object data) {
+            assertNull(applicationData, "The application data has already been set. You cannot set it again. Reason, it could hide a bug");
             applicationData = data;
             return this;
         }
 
         @Override
         public HttpTransaction start() {
-            return new DefaultHttpTransaction(sniceHttpStack, env, request, onResponseFunction,
-                    Optional.ofNullable(onEventFunction), Optional.ofNullable(applicationData)).start();
+            return new DefaultHttpTransaction(sniceHttpStack, env, request, onResponseFunction, Optional.ofNullable(applicationData)).start();
         }
 
     }
@@ -301,7 +314,6 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
                                           HttpEnvironment<HttpConfig> env,
                                           HttpRequest request,
                                           BiConsumer<HttpTransaction, HttpResponse> onResponse,
-                                          Optional<BiConsumer<HttpTransaction, Object>> onEventFunction,
                                           Optional<Object> applicationData)
             implements HttpTransaction {
 
@@ -317,16 +329,30 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
             //      the same Scenario (so we get the statistics etc just for a single scenario and so on...
             env.connect(transport, remoteHost, remotePort).thenAccept(c -> {
                 logger.debug("Successfully connected to " + remoteDest);
-                final var builder = c.createNewTransaction(request)
+
+                // TODO: we probably want to send an event regarding which address the remoteHost:port
+                //      actually resolved to (assuming it is a FQDN).
+                //      We could just create that event here and ask the SniceHttpStack to dispatch it.
+
+                final var data = applicationData.orElseThrow(() -> new RuntimeException("It is expected that the application data is associated with the HTTP transaction. We have an internal bug"));
+                if (data instanceof ScenarioResourceIdentifier sri) {
+                    sniceHttpStack.associate(c.id(), sri);
+                } else {
+                    throw new IllegalArgumentException("It is expected that the user data on the HttpTransaction is of type: " + ScenarioResourceIdentifier.class.getName());
+                }
+
+                // TODO: it would be much cleaner if we could register a callback on the actual connection for
+                //       all events coming up that pipeline. This would have to be in Snice Networking but
+                //       a reminder that that's where we should add this.
+                //       c.onEvent(Consumer<Object> callback);
+                //       This would then override any onEvent we did for the initial setup in our http app.
+
+                final var transaction = c.createNewTransaction(request)
                         .onResponse((tx, resp) -> onResponse.accept(this, resp))
                         .onTransactionTimeout(tx -> logger.warn("Currently not handling the transaction timing out"))
-                        .onTransactionTerminated(tx -> logger.info("HTTP Transaction terminated"));
-                applicationData.ifPresent(data -> builder.withApplicationData(data));
-                onEventFunction.ifPresent(f -> {
-                    sniceHttpStack.storeConnectionEventCallback(c.id(), f);
-                });
-
-                final var transaction = builder.start();
+                        .onTransactionTerminated(tx -> logger.info("HTTP Transaction terminated"))
+                        .withApplicationData(data)
+                        .start();
             });
             return this;
         }

@@ -224,7 +224,7 @@ public class SniceLocalDevRuntime implements SniceRuntime {
         //      Currently, that is not the case.
         protocolsMap.values().forEach(Protocol::start);
 
-        final var ctx = new DefaultScenarioContext(registry);
+        final var ctx = new DefaultScenarioContext(scenario.uuid(), registry);
         final var session = new Session(scenario.name());
 
         final var future = new CompletableFuture<Void>();

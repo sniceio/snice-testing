@@ -41,12 +41,6 @@ public record InitiateHttpRequestAction(String name,
                 final var transaction = stack.newTransaction(request);
                 final var processor = new ResponseProcessor(name, request, httpDef.checks(), session, executions, next);
                 transaction.onResponse(processor::process);
-                transaction.applicationData(session.uuid());
-                transaction.onEvent((t, event) -> {
-                    System.err.println("YEAH!!!! We are back in the InitiateHttpRequestAction");
-                    System.err.println("HttpTransaction : " + t);
-                    System.err.println("Event : " + event);
-                });
                 transaction.start();
             } else {
                 // TODO: perhaps say something more about the failure here? After all, it failed because
