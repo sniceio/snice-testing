@@ -45,14 +45,17 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
 
     private HttpEnvironment<HttpConfig> env;
 
-    // TODO: not so sure we need this one anymore
+    // TODO: we should just dispatch all events to the wrapper that created the connection.
+    //       No two wrappers are allowed to re-use the same connection object.
     private final ConcurrentMap<ActionResourceIdentifier, HttpStackWrapper> stacks = new ConcurrentHashMap<>();
 
     // TODO: need sane default values for the size of the map...
     private final ConcurrentMap<ActionResourceIdentifier, DefaultHttpAcceptor> acceptors = new ConcurrentHashMap<>();
 
     private final ConcurrentMap<ScenarioResourceIdentifier, BiConsumer<ConnectionId, Object>> appEventCallbacks = new ConcurrentHashMap<>();
-    private final ConcurrentMap<ConnectionId, ScenarioResourceIdentifier> connectionIdToScenarioSri = new ConcurrentHashMap<>();
+
+    // TODO: we can get rid of these once we can store attributes on the connection object.
+    private final ConcurrentMap<ConnectionId, HttpStackWrapper> connectionIdToStack = new ConcurrentHashMap<>();
 
 
     @Override
@@ -71,18 +74,23 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
 
     public HttpStack newStack(final ScenarioResourceIdentifier scenarioSri,
                               final ActionResourceIdentifier actionSri,
+                              final BiConsumer<ConnectionId, Object> f,
                               final HttpStackUserConfig config) {
         assertNotNull(scenarioSri);
         assertNotNull(actionSri);
         assertNotNull(config);
         final var address = allocateNewAddress(actionSri, config);
-        final var stack = new HttpStackWrapper(scenarioSri, actionSri, config, this, address);
+        final var stack = new HttpStackWrapper(scenarioSri, actionSri, config, f, this, address);
         stacks.put(actionSri, stack);
         return stack;
     }
 
-    private void associate(final ConnectionId id, final ScenarioResourceIdentifier sri) {
-        connectionIdToScenarioSri.putIfAbsent(id, sri);
+    private void associate(final ConnectionId id, final HttpStackWrapper httpStack) {
+        final var previous = connectionIdToStack.putIfAbsent(id, httpStack);
+        if (previous != null) {
+            System.err.println("CLASH associating a ConnectionId with a HttpStack");
+            // TODO CLASH!
+        }
     }
 
     private void storeConnectionEventCallback(final ScenarioResourceIdentifier scenarioSri, final BiConsumer<ConnectionId, Object> f) {
@@ -97,13 +105,23 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
     }
 
     private void onApplicationEvent(final HttpConnection connection, final Object event) {
-        System.err.println("Snice Http Stack onAppEvent: " + event);
-        final var sri = connectionIdToScenarioSri.get(connection.id());
+        final var stack = connectionIdToStack.get(connection.id());
+        if (stack == null) {
+            logger.warn("No registered HTTP Stack for connection " + connection.id() + ". Internal bug. Probably race condition");
+            return;
+        }
+
+        stack.onApplicationEvent(connection, event);
+
+        /*
         final var callback = appEventCallbacks.get(sri);
         if (callback != null) {
-            System.err.println("yeah, calling the callback");
             callback.accept(connection.id(), event);
+        } else {
+            logger.warn("No callback registered for SRI: " + sri + " and connection " + connection.id() + ". Internal bug");
         }
+
+         */
     }
 
     /**
@@ -146,9 +164,9 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
         env = environment;
     }
 
-    private HttpTransaction.Builder newTransaction(final HttpRequest request) {
+    private HttpTransaction.Builder newTransaction(final HttpStackWrapper wrapper, final HttpRequest request) {
         assertNotNull(request);
-        return new HttpTransactionBuilder(this, env, request);
+        return new HttpTransactionBuilder(this, env, wrapper, request);
     }
 
     private void onHttpRequest(final HttpConnection connection, final HttpMessageEvent event) {
@@ -201,6 +219,7 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
     private static record HttpStackWrapper(ScenarioResourceIdentifier scenarioSri,
                                            ActionResourceIdentifier actionSri,
                                            HttpStackUserConfig config,
+                                           BiConsumer<ConnectionId, Object> f,
                                            SniceHttpStack actualStack,
                                            URL address) implements HttpStack {
 
@@ -214,14 +233,15 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
 
         @Override
         public HttpTransaction.Builder newTransaction(final HttpRequest request) {
-            final var builder = actualStack.newTransaction(request);
+            final var builder = actualStack.newTransaction(this, request);
             builder.applicationData(scenarioSri);
             return builder;
         }
 
-        @Override
-        public void onConnectionEvents(final BiConsumer<ConnectionId, Object> f) {
-            actualStack.storeConnectionEventCallback(scenarioSri, f);
+        private void onApplicationEvent(final HttpConnection connection, final Object event) {
+            if (f != null) {
+                f.accept(connection.id(), event);
+            }
         }
     }
 
@@ -279,13 +299,18 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
         private final SniceHttpStack sniceHttpStack;
         private final HttpEnvironment<HttpConfig> env;
         private final HttpRequest request;
+        private final HttpStackWrapper wrapper;
 
         private BiConsumer<HttpTransaction, HttpResponse> onResponseFunction;
         private Object applicationData;
 
-        private HttpTransactionBuilder(final SniceHttpStack sniceHttpStack, final HttpEnvironment<HttpConfig> env, final HttpRequest request) {
+        private HttpTransactionBuilder(final SniceHttpStack sniceHttpStack,
+                                       final HttpEnvironment<HttpConfig> env,
+                                       final HttpStackWrapper wrapper,
+                                       final HttpRequest request) {
             this.sniceHttpStack = sniceHttpStack;
             this.env = env;
+            this.wrapper = wrapper;
             this.request = request;
         }
 
@@ -305,7 +330,7 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
 
         @Override
         public HttpTransaction start() {
-            return new DefaultHttpTransaction(sniceHttpStack, env, request, onResponseFunction, Optional.ofNullable(applicationData)).start();
+            return new DefaultHttpTransaction(sniceHttpStack, env, request, onResponseFunction, wrapper, Optional.ofNullable(applicationData)).start();
         }
 
     }
@@ -314,6 +339,7 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
                                           HttpEnvironment<HttpConfig> env,
                                           HttpRequest request,
                                           BiConsumer<HttpTransaction, HttpResponse> onResponse,
+                                          HttpStackWrapper wrapper,
                                           Optional<Object> applicationData)
             implements HttpTransaction {
 
@@ -328,15 +354,19 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
             //      Sncie Testing, most of the time we probably don't want to share connection outside
             //      the same Scenario (so we get the statistics etc just for a single scenario and so on...
             env.connect(transport, remoteHost, remotePort).thenAccept(c -> {
+
                 logger.debug("Successfully connected to " + remoteDest);
+                sniceHttpStack.associate(c.id(), wrapper);
 
                 // TODO: we probably want to send an event regarding which address the remoteHost:port
                 //      actually resolved to (assuming it is a FQDN).
                 //      We could just create that event here and ask the SniceHttpStack to dispatch it.
 
+                // TODO: add attributes to the connection instead so we don't have to store it ourselves.
+                //       This needs to be added to the Snice Networking Connection object, which then would use
+                //       the Netty Channel to actually store it.
                 final var data = applicationData.orElseThrow(() -> new RuntimeException("It is expected that the application data is associated with the HTTP transaction. We have an internal bug"));
                 if (data instanceof ScenarioResourceIdentifier sri) {
-                    sniceHttpStack.associate(c.id(), sri);
                 } else {
                     throw new IllegalArgumentException("It is expected that the user data on the HttpTransaction is of type: " + ScenarioResourceIdentifier.class.getName());
                 }

@@ -2,8 +2,8 @@ package io.snice.testing.runtime.fsm;
 
 import io.hektor.fsm.Context;
 import io.snice.testing.core.Session;
+import io.snice.testing.core.protocol.ProtocolRegistry;
 import io.snice.testing.core.scenario.Scenario;
-import io.snice.testing.core.scenario.ScenarioContex;
 
 public interface ScenarioSupervisorCtx extends Context {
 
@@ -12,6 +12,6 @@ public interface ScenarioSupervisorCtx extends Context {
      */
     void isRunning();
 
-    void runScenario(final Session session, final Scenario scenario, final ScenarioContex ctx);
+    void runScenario(final Session session, final Scenario scenario, final ProtocolRegistry registry);
 
 }

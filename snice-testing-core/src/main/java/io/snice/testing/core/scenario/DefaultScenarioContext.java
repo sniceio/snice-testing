@@ -1,5 +1,6 @@
 package io.snice.testing.core.scenario;
 
+import io.hektor.core.ActorRef;
 import io.snice.identity.sri.ScenarioResourceIdentifier;
 import io.snice.networking.common.ConnectionId;
 import io.snice.testing.core.protocol.Protocol;
@@ -9,10 +10,12 @@ import java.util.Optional;
 
 public class DefaultScenarioContext implements ScenarioContex, ProtocolRegistry {
 
+    private final ActorRef actor;
     private final ScenarioResourceIdentifier sri;
     private final ProtocolRegistry actualRegistry;
 
-    public DefaultScenarioContext(final ScenarioResourceIdentifier sri, final ProtocolRegistry actualRegistry) {
+    public DefaultScenarioContext(final ActorRef actor, final ScenarioResourceIdentifier sri, final ProtocolRegistry actualRegistry) {
+        this.actor = actor;
         this.sri = sri;
         this.actualRegistry = actualRegistry;
     }
@@ -29,7 +32,7 @@ public class DefaultScenarioContext implements ScenarioContex, ProtocolRegistry 
 
     @Override
     public void onConnectionEvent(final ConnectionId id, final Object event) {
-        System.err.println("yay, event! " + id + " Event: " + event);
+        actor.tell(event);
     }
 
     /**
@@ -37,7 +40,6 @@ public class DefaultScenarioContext implements ScenarioContex, ProtocolRegistry 
      */
     @Override
     public <T extends Protocol> Optional<T> protocol(final Key key) {
-        System.err.println("Looking up " + key);
         return actualRegistry.protocol(key);
     }
 }

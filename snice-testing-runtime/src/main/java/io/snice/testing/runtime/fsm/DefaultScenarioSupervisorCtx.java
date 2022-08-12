@@ -6,8 +6,9 @@ import io.hektor.actors.fsm.OnStartFunction;
 import io.hektor.core.ActorRef;
 import io.hektor.core.Props;
 import io.snice.testing.core.Session;
+import io.snice.testing.core.protocol.ProtocolRegistry;
+import io.snice.testing.core.scenario.DefaultScenarioContext;
 import io.snice.testing.core.scenario.Scenario;
-import io.snice.testing.core.scenario.ScenarioContex;
 
 import java.util.concurrent.CountDownLatch;
 
@@ -30,19 +31,22 @@ public class DefaultScenarioSupervisorCtx implements ScenarioSupervisorCtx, FsmA
     }
 
     @Override
-    public void runScenario(final Session session, final Scenario scenario, final ScenarioContex ctx) {
-        final var props = configureScenarioFsm(session, scenario, ctx);
+    public void runScenario(final Session session, final Scenario scenario, final ProtocolRegistry registry) {
+        final var props = configureScenarioFsm(session, scenario, registry);
         final var scnActor = ctx().actorOf(scenario.uuid().asString(), props);
     }
 
-    private Props configureScenarioFsm(final Session session, final Scenario scenario, final ScenarioContex scenarioContext) {
+    private Props configureScenarioFsm(final Session session, final Scenario scenario, final ProtocolRegistry registry) {
         final var scenarioData = new ScenarioData();
         final OnStartFunction<ScenarioFsmContext, ScenarioData> onStart = (actorCtx, ctx, data) -> {
             actorCtx.self().tell(new ScenarioMessage.Init(session, scenario));
         };
 
         return FsmActor.of(ScenarioFsm.definition)
-                .withContext(ref -> new DefaultScenarioFsmContext(self, ref, scenario, scenarioContext))
+                .withContext(ref -> {
+                    final var scenarioContext = new DefaultScenarioContext(ref, scenario.uuid(), registry);
+                    return new DefaultScenarioFsmContext(self, ref, scenario, scenarioContext);
+                })
                 .withData(scenarioData)
                 .withStartFunction(onStart)
                 .build();

@@ -3,6 +3,7 @@ package io.snice.testing.http.protocol.impl;
 import io.snice.codecs.codec.http.HttpProvider;
 import io.snice.identity.sri.ActionResourceIdentifier;
 import io.snice.identity.sri.ScenarioResourceIdentifier;
+import io.snice.networking.common.ConnectionId;
 import io.snice.networking.http.impl.NettyHttpMessageFactory;
 import io.snice.testing.core.common.Expression;
 import io.snice.testing.core.protocol.ProtocolRegistry;
@@ -13,6 +14,7 @@ import io.snice.testing.http.stack.HttpStackUserConfig;
 import io.snice.testing.http.stack.impl.SniceHttpStack;
 
 import java.util.Optional;
+import java.util.function.BiConsumer;
 
 import static io.snice.preconditions.PreConditions.assertNotNull;
 
@@ -44,8 +46,10 @@ public record SniceHttpProtocol(HttpConfig config,
     }
 
     @Override
-    public HttpStack newStack(final ScenarioResourceIdentifier scenarioSri, final ActionResourceIdentifier actionSri, final HttpStackUserConfig config) {
-        return stack.newStack(scenarioSri, actionSri, config);
+    public HttpStack newStack(final ScenarioResourceIdentifier scenarioSri, final ActionResourceIdentifier actionSri,
+                              final BiConsumer<ConnectionId, Object> f,
+                              final HttpStackUserConfig config) {
+        return stack.newStack(scenarioSri, actionSri, f, config);
     }
 
     private static class SniceNetworkingHttpBuilder implements HttpProtocolBuilder {

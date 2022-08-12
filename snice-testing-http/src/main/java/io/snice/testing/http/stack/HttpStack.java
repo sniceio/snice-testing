@@ -2,14 +2,12 @@ package io.snice.testing.http.stack;
 
 import io.snice.codecs.codec.http.HttpRequest;
 import io.snice.networking.common.Connection;
-import io.snice.networking.common.ConnectionId;
 import io.snice.testing.core.action.Action;
 import io.snice.testing.http.protocol.HttpAcceptor;
 import io.snice.testing.http.protocol.HttpTransaction;
 
 import java.net.URL;
 import java.time.Duration;
-import java.util.function.BiConsumer;
 
 public interface HttpStack {
 
@@ -37,7 +35,7 @@ public interface HttpStack {
      *
      * @param f
      */
-    void onConnectionEvents(BiConsumer<ConnectionId, Object> f);
+    // void onConnectionEvents(BiConsumer<ConnectionId, Object> f);
 
     /**
      * The address at which external clients can access this {@link HttpStack}. Typically, this is only used
