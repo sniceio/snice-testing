@@ -223,7 +223,8 @@ public class SniceLocalDevRuntime implements SniceRuntime {
         //      Currently, that is not the case.
         protocolsMap.values().forEach(Protocol::start);
 
-        final var session = new Session(scenario.name());
+        final var envVariables = System.getenv();
+        final var session = new Session(scenario.name()).environment(envVariables);
 
         final var future = new CompletableFuture<Void>();
         nextSupervisor().tell(new ScenarioSupervisorMessages.Run(scenario, session, registry, future));

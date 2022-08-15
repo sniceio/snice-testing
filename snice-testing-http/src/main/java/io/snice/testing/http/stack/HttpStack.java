@@ -33,9 +33,9 @@ public interface HttpStack {
      * also note that if the usage of a particular {@link HttpStack} is only to create a single {@link HttpTransaction}
      * then yes, the connection events that will occur are very much triggered due to this single transaction.
      *
-     * @param f
+     * @param eventHandler
      */
-    // void onConnectionEvents(BiConsumer<ConnectionId, Object> f);
+    // void onConnectionEvents(BiConsumer<ConnectionId, Object> eventHandler);
 
     /**
      * The address at which external clients can access this {@link HttpStack}. Typically, this is only used

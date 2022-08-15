@@ -14,6 +14,9 @@ import io.snice.networking.http.HttpConnection;
 import io.snice.networking.http.HttpEnvironment;
 import io.snice.networking.http.event.HttpEvent;
 import io.snice.networking.http.event.HttpMessageEvent;
+import io.snice.testing.core.action.Action;
+import io.snice.testing.core.protocol.Protocol;
+import io.snice.testing.core.scenario.Scenario;
 import io.snice.testing.http.HttpConfig;
 import io.snice.testing.http.protocol.HttpAcceptor;
 import io.snice.testing.http.protocol.HttpServerTransaction;
@@ -45,17 +48,10 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
 
     private HttpEnvironment<HttpConfig> env;
 
-    // TODO: we should just dispatch all events to the wrapper that created the connection.
-    //       No two wrappers are allowed to re-use the same connection object.
     private final ConcurrentMap<ActionResourceIdentifier, HttpStackWrapper> stacks = new ConcurrentHashMap<>();
 
     // TODO: need sane default values for the size of the map...
     private final ConcurrentMap<ActionResourceIdentifier, DefaultHttpAcceptor> acceptors = new ConcurrentHashMap<>();
-
-    private final ConcurrentMap<ScenarioResourceIdentifier, BiConsumer<ConnectionId, Object>> appEventCallbacks = new ConcurrentHashMap<>();
-
-    // TODO: we can get rid of these once we can store attributes on the connection object.
-    private final ConcurrentMap<ConnectionId, HttpStackWrapper> connectionIdToStack = new ConcurrentHashMap<>();
 
 
     @Override
@@ -72,56 +68,35 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
         return new HttpAcceptorBuilder(sri, timeout);
     }
 
+    /**
+     * Create a new {@link HttpStack} for the given {@link ScenarioResourceIdentifier} and
+     * {@link ActionResourceIdentifier}.
+     *
+     * @param scenarioSri  the SRI of the {@link Scenario} that ultimately "owns" this stack since it owns
+     *                     the execution of actions.
+     * @param actionSri    the SRI of the {@link Action} that requested this stack (or rather, the {@link Protocol}
+     *                     the action is using requested this stack to be created)
+     * @param eventHandler there are several informational events that are being emitted by the underlying stack and
+     *                     if registered, those are delivered to this event handler.
+     * @param config       unique http configuration just for this "user".
+     * @return
+     */
     public HttpStack newStack(final ScenarioResourceIdentifier scenarioSri,
                               final ActionResourceIdentifier actionSri,
-                              final BiConsumer<ConnectionId, Object> f,
+                              final BiConsumer<ConnectionId, Object> eventHandler,
                               final HttpStackUserConfig config) {
         assertNotNull(scenarioSri);
         assertNotNull(actionSri);
         assertNotNull(config);
         final var address = allocateNewAddress(actionSri, config);
-        final var stack = new HttpStackWrapper(scenarioSri, actionSri, config, f, this, address);
+        final var stack = new HttpStackWrapper(scenarioSri, actionSri, config, eventHandler, this, address);
         stacks.put(actionSri, stack);
         return stack;
     }
 
-    private void associate(final ConnectionId id, final HttpStackWrapper httpStack) {
-        final var previous = connectionIdToStack.putIfAbsent(id, httpStack);
-        if (previous != null) {
-            System.err.println("CLASH associating a ConnectionId with a HttpStack");
-            // TODO CLASH!
-        }
-    }
-
-    private void storeConnectionEventCallback(final ScenarioResourceIdentifier scenarioSri, final BiConsumer<ConnectionId, Object> f) {
-        // TODO: lots of race conditions here. Events that showed up before we managed to register
-        //       the callback etc. Events coming in even though we checked the outstanding events for a given
-        //       ConnectionId and it was empty a second ago etc etc.
-        final var previous = appEventCallbacks.putIfAbsent(scenarioSri, f);
-        if (previous != null) {
-            System.err.println("CLASH!!!");
-            // TODO CLASH!
-        }
-    }
-
     private void onApplicationEvent(final HttpConnection connection, final Object event) {
-        final var stack = connectionIdToStack.get(connection.id());
-        if (stack == null) {
-            logger.warn("No registered HTTP Stack for connection " + connection.id() + ". Internal bug. Probably race condition");
-            return;
-        }
-
-        stack.onApplicationEvent(connection, event);
-
-        /*
-        final var callback = appEventCallbacks.get(sri);
-        if (callback != null) {
-            callback.accept(connection.id(), event);
-        } else {
-            logger.warn("No callback registered for SRI: " + sri + " and connection " + connection.id() + ". Internal bug");
-        }
-
-         */
+        // TODO: this is an error. All should be caught by the c.onConnectionInfoEvent as registered
+        //       when the connection was established
     }
 
     /**
@@ -219,7 +194,7 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
     private static record HttpStackWrapper(ScenarioResourceIdentifier scenarioSri,
                                            ActionResourceIdentifier actionSri,
                                            HttpStackUserConfig config,
-                                           BiConsumer<ConnectionId, Object> f,
+                                           BiConsumer<ConnectionId, Object> eventHandler,
                                            SniceHttpStack actualStack,
                                            URL address) implements HttpStack {
 
@@ -236,12 +211,6 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
             final var builder = actualStack.newTransaction(this, request);
             builder.applicationData(scenarioSri);
             return builder;
-        }
-
-        private void onApplicationEvent(final HttpConnection connection, final Object event) {
-            if (f != null) {
-                f.accept(connection.id(), event);
-            }
         }
     }
 
@@ -353,36 +322,26 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
             //      currently not supported by Snice Networking but it really should be. However, in
             //      Sncie Testing, most of the time we probably don't want to share connection outside
             //      the same Scenario (so we get the statistics etc just for a single scenario and so on...
+            // TODO: in the case the connection fails, we also want to register those connection events etc
+            //       so they are visble in our stack. This is just the happy case right now.
             env.connect(transport, remoteHost, remotePort).thenAccept(c -> {
-
-                logger.debug("Successfully connected to " + remoteDest);
-                sniceHttpStack.associate(c.id(), wrapper);
 
                 // TODO: we probably want to send an event regarding which address the remoteHost:port
                 //      actually resolved to (assuming it is a FQDN).
                 //      We could just create that event here and ask the SniceHttpStack to dispatch it.
 
-                // TODO: add attributes to the connection instead so we don't have to store it ourselves.
-                //       This needs to be added to the Snice Networking Connection object, which then would use
-                //       the Netty Channel to actually store it.
-                final var data = applicationData.orElseThrow(() -> new RuntimeException("It is expected that the application data is associated with the HTTP transaction. We have an internal bug"));
-                if (data instanceof ScenarioResourceIdentifier sri) {
-                } else {
-                    throw new IllegalArgumentException("It is expected that the user data on the HttpTransaction is of type: " + ScenarioResourceIdentifier.class.getName());
-                }
+                c.onConnectionInfoEvent((con, event) -> {
+                    if (wrapper.eventHandler != null) {
+                        wrapper.eventHandler.accept(con.id(), event);
+                    }
+                });
 
-                // TODO: it would be much cleaner if we could register a callback on the actual connection for
-                //       all events coming up that pipeline. This would have to be in Snice Networking but
-                //       a reminder that that's where we should add this.
-                //       c.onEvent(Consumer<Object> callback);
-                //       This would then override any onEvent we did for the initial setup in our http app.
-
-                final var transaction = c.createNewTransaction(request)
+                final var transactionBuilder = c.createNewTransaction(request)
                         .onResponse((tx, resp) -> onResponse.accept(this, resp))
                         .onTransactionTimeout(tx -> logger.warn("Currently not handling the transaction timing out"))
-                        .onTransactionTerminated(tx -> logger.info("HTTP Transaction terminated"))
-                        .withApplicationData(data)
-                        .start();
+                        .onTransactionTerminated(tx -> logger.info("HTTP Transaction terminated"));
+                applicationData.ifPresent(transactionBuilder::withApplicationData);
+                transactionBuilder.start();
             });
             return this;
         }

@@ -30,7 +30,7 @@ public interface HttpTransaction {
          * Note: again, if we re-use an existing connection this will then count all of that traffic, not just this
          * single transaction.
          */
-        // Builder onEvent(BiConsumer<HttpTransaction, Object> f);
+        // Builder onEvent(BiConsumer<HttpTransaction, Object> eventHandler);
 
         /**
          * <p>
