@@ -43,12 +43,12 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <io.snice.commons.version>0.1.10-SNAPSHOT</io.snice.commons.version>
-        <io.snice.codecs.version>0.0.10-SNAPSHOT</io.snice.codecs.version>
-        <io.snice.networking.version>0.0.10-SNAPSHOT</io.snice.networking.version>
+        <io.snice.commons.version>0.1.10</io.snice.commons.version>
+        <io.snice.codecs.version>0.0.10</io.snice.codecs.version>
+        <io.snice.networking.version>0.0.10</io.snice.networking.version>
         <logback.version>1.2.10</logback.version>
         <argparse4j.version>0.9.0</argparse4j.version>
-        <hektor.version>0.0.5-SNAPSHOT</hektor.version>
+        <hektor.version>0.0.5</hektor.version>
         <maven.compiler.release>17</maven.compiler.release>
         <junit5.version>5.8.2</junit5.version>
         <hamcrest.version>2.2</hamcrest.version>
@@ -286,12 +286,17 @@
             </plugin>
 
             <plugin>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.0.0-M7</version>
+            </plugin>
+
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>3.1.1</version>
                 <configuration>
                     <source>${maven.compiler.release}</source>
-		    <additionalJOption>-Xdoclint:none</additionalJOption>
+                    <additionalJOption>-Xdoclint:none</additionalJOption>
                 </configuration>
                 <executions>
                     <execution>

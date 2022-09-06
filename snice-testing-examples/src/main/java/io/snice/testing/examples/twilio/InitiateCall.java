@@ -13,13 +13,13 @@ import static io.snice.testing.http.HttpDsl.http;
 import static io.snice.testing.http.check.HttpCheckSupport.header;
 import static io.snice.testing.http.check.HttpCheckSupport.status;
 
-public record InitiateCall() {
+public class InitiateCall {
 
     private static String produceTwiml(final String msg) {
         return "<Response><Say>" + msg + "</Say></Response>";
     }
 
-    public Scenario scenario() {
+    public static Scenario scenario() {
 
         final var twimlHook = http("Twiml Hook")
                 .accept(HttpMethod.POST, "/demo")
@@ -68,11 +68,12 @@ public record InitiateCall() {
     }
 
     public static void main(final String... args) throws Exception {
-        // Please do NOT check in sensitive information! :-)
 
-        // TODO: instead of passing to and from in here, use a Feeder and variables in
-        //  the content map... like Gatling
-        final var scenario = new InitiateCall().scenario();
+        // Please do NOT check in sensitive information! :-)
+        // Snice Testing allows you to reference environment variables
+        // as part of your scenario. Use that!
+
+        final var scenario = InitiateCall.scenario();
 
         // NOTE: that last slash is SUPER SUPER important!
         // TODO: document this once we get to that.

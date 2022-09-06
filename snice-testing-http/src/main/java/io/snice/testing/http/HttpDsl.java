@@ -2,8 +2,8 @@ package io.snice.testing.http;
 
 
 import io.snice.codecs.codec.http.HttpMethod;
-import io.snice.networking.common.NetworkingUtils;
 import io.snice.networking.common.Transport;
+import io.snice.networking.common.docker.DockerSupport;
 import io.snice.networking.config.NetworkInterfaceConfiguration;
 import io.snice.testing.core.Session;
 import io.snice.testing.http.check.HttpCheckSupport;
@@ -42,7 +42,11 @@ public class HttpDsl extends HttpCheckSupport {
         // TODO: note that I changed the aboce from SniceConfig to HttpConfig and then
         // we'll need to figure out how to get that HttpConfig into this DSL...
         try {
-            final var ip = NetworkingUtils.findPrimaryAddress().getHostAddress();
+            // TODO: this is not really used anymore. Something is off, is being created in the
+            //       SniceLocalDevRuntime right now.
+            final var dockerSupport = DockerSupport.of().withReadFromSystemProperties().build();
+            final var ip = dockerSupport.getPrimaryHostIp();
+            // final var ip = NetworkingUtils.findPrimaryAddress().getHostAddress();
             // final var ip = "127.0.0.1";
             final var listen = new URI("https://" + ip + ":1234");
 

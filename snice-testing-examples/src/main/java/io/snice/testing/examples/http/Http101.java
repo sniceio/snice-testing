@@ -14,7 +14,7 @@ public class Http101 {
     public static void main(final String... args) throws Exception {
 
         // 1. Create the HTTPS GET request and add any checks to it.
-        final var get = get("https://example.com").check(status().is(200));
+        final var get = get("http://example.com").check(status().is(200));
 
         // 2. Ask Snice to just run that GET request for you. It'll return
         //    a CompletionStage that you can use to wait for the test to finish
