@@ -1,6 +1,6 @@
 package io.snice.testing.runtime.impl;
 
-import io.snice.testing.core.scenario.ExecutionPlan;
+import io.snice.testing.core.scenario.Simulation;
 
-public class SimpleExecutionPlan extends ExecutionPlan {
+public class SimpleExecutionPlan extends Simulation {
 }

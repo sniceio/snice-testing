@@ -13,8 +13,8 @@ import io.snice.testing.core.action.ActionBuilder;
 import io.snice.testing.core.protocol.Protocol;
 import io.snice.testing.core.protocol.ProtocolProvider;
 import io.snice.testing.core.protocol.ProtocolRegistry;
-import io.snice.testing.core.scenario.ExecutionPlan;
 import io.snice.testing.core.scenario.Scenario;
+import io.snice.testing.core.scenario.Simulation;
 import io.snice.testing.runtime.SniceRuntime;
 import io.snice.testing.runtime.fsm.DefaultScenarioSupervisorCtx;
 import io.snice.testing.runtime.fsm.ScenarioSupervisorCtx;
@@ -106,6 +106,7 @@ public class SniceLocalDevRuntime implements SniceRuntime {
         } else {
             logger.info("No tasks were ever scheduled, shutting down system");
         }
+
         sleep(10000);
         doneFuture.complete(null);
         hektor.terminate();
@@ -176,11 +177,11 @@ public class SniceLocalDevRuntime implements SniceRuntime {
     }
 
     @Override
-    public <T extends ExecutionPlan> CompletionStage<Void> run(final T plan) {
-        return internalRun(plan);
+    public <T extends Simulation> CompletionStage<Void> run(final T simulation) {
+        return internalRun(simulation);
     }
 
-    private ExecutionPlan createDefaultExecutionPlan(final Scenario scenario, final List<Protocol> protocols, final boolean strictMode) {
+    private Simulation createDefaultExecutionPlan(final Scenario scenario, final List<Protocol> protocols, final boolean strictMode) {
         final var plan = new SimpleExecutionPlan();
         final var setup = plan.setUp(scenario).strictMode(strictMode);
         if (protocols != null && !protocols.isEmpty()) {
@@ -222,15 +223,15 @@ public class SniceLocalDevRuntime implements SniceRuntime {
      *
      * @return
      */
-    private CompletionStage<Void> internalRun(final ExecutionPlan plan) {
+    private CompletionStage<Void> internalRun(final Simulation simulation) {
 
-        final var executionSettings = plan.settings();
+        final var plan = simulation.plan();
 
-        final var protocolsMap = executionSettings.protocols().stream().collect(Collectors.toMap(Protocol::key, Function.identity()));
-        final var requiredProtocols = executionSettings.scenario().protocols();
+        final var protocolsMap = plan.protocols().stream().collect(Collectors.toMap(Protocol::key, Function.identity()));
+        final var requiredProtocols = plan.scenario().protocols();
         final var missingProtocols = requiredProtocols.stream().filter(key -> !protocolsMap.containsKey(key)).collect(toList());
 
-        if (!missingProtocols.isEmpty() && executionSettings.strictMode()) {
+        if (!missingProtocols.isEmpty() && plan.strictMode()) {
             throw new IllegalArgumentException("The following required protocol(s) for running the scenario are missing: " + missingProtocols);
         }
 
@@ -244,14 +245,13 @@ public class SniceLocalDevRuntime implements SniceRuntime {
         protocolsMap.values().forEach(Protocol::start);
 
         final var envVariables = System.getenv();
-        final var session = new Session(executionSettings.name()).environment(envVariables);
+        final var session = new Session(plan.name()).environment(envVariables);
 
         final var future = new CompletableFuture<Void>();
-        nextSupervisor().tell(new ScenarioSupervisorMessages.Run(executionSettings.scenario(), session, registry, future));
+        nextSupervisor().tell(new ScenarioSupervisorMessages.Run(plan.scenario(), session, registry, future));
         runningScenarios.add(future);
         firstScenarioScheduledLatch.countDown();
         return future;
-
     }
 
     /**
