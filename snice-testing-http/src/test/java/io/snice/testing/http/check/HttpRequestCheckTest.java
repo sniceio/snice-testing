@@ -1,6 +1,8 @@
 package io.snice.testing.http.check;
 
+import io.snice.codecs.codec.http.HttpProvider;
 import io.snice.codecs.codec.http.HttpRequest;
+import io.snice.networking.http.impl.NettyHttpMessageFactory;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.check.CheckResult;
 import io.snice.testing.http.TestBase;
@@ -37,6 +39,7 @@ public class HttpRequestCheckTest extends TestBase {
      */
     @Test
     public void testCheckHttpRequestHeaderOperandIsFailure() {
+        HttpProvider.setMessageFactory(new NettyHttpMessageFactory());
         final var result = header("Hello").is("world").check(request, session);
         checkCheckResult(result, empty(), false);
     }

@@ -3,6 +3,7 @@ package io.snice.testing.runtime;
 import io.snice.testing.core.MessageBuilder;
 import io.snice.testing.core.action.ActionBuilder;
 import io.snice.testing.core.protocol.Protocol;
+import io.snice.testing.core.scenario.ExecutionPlan;
 import io.snice.testing.core.scenario.Scenario;
 
 import java.util.Arrays;
@@ -36,6 +37,14 @@ public interface SniceRuntime {
      * @return
      */
     CompletionStage<Void> run(Scenario scenario, List<Protocol> protocols);
+
+    /**
+     * Run the given {@link ExecutionPlan}
+     *
+     * @param plan
+     * @return
+     */
+    <T extends ExecutionPlan> CompletionStage<Void> run(T plan);
 
     default CompletionStage<Void> run(final Scenario scenario, final Protocol.Builder... protocols) {
         return run(scenario, Arrays.stream(protocols)

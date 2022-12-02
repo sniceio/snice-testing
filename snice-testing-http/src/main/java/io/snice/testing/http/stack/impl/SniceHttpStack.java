@@ -4,6 +4,8 @@ import io.snice.codecs.codec.http.HttpHeader;
 import io.snice.codecs.codec.http.HttpRequest;
 import io.snice.codecs.codec.http.HttpResponse;
 import io.snice.identity.sri.ActionResourceIdentifier;
+import io.snice.identity.sri.ScenarioResourceIdentifier;
+import io.snice.networking.common.ConnectionId;
 import io.snice.networking.common.Transport;
 import io.snice.networking.core.ListeningPoint;
 import io.snice.networking.http.HttpApplication;
@@ -12,6 +14,9 @@ import io.snice.networking.http.HttpConnection;
 import io.snice.networking.http.HttpEnvironment;
 import io.snice.networking.http.event.HttpEvent;
 import io.snice.networking.http.event.HttpMessageEvent;
+import io.snice.testing.core.action.Action;
+import io.snice.testing.core.protocol.Protocol;
+import io.snice.testing.core.scenario.Scenario;
 import io.snice.testing.http.HttpConfig;
 import io.snice.testing.http.protocol.HttpAcceptor;
 import io.snice.testing.http.protocol.HttpServerTransaction;
@@ -34,6 +39,7 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
 import static io.snice.preconditions.PreConditions.assertNotNull;
+import static io.snice.preconditions.PreConditions.assertNull;
 import static io.snice.testing.http.stack.impl.HttpStackUtils.extractSri;
 
 public class SniceHttpStack extends HttpApplication<HttpConfig> {
@@ -42,11 +48,11 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
 
     private HttpEnvironment<HttpConfig> env;
 
-    // TODO: not so sure we need this one anymore
     private final ConcurrentMap<ActionResourceIdentifier, HttpStackWrapper> stacks = new ConcurrentHashMap<>();
 
     // TODO: need sane default values for the size of the map...
     private final ConcurrentMap<ActionResourceIdentifier, DefaultHttpAcceptor> acceptors = new ConcurrentHashMap<>();
+
 
     @Override
     public void initialize(final HttpBootstrap<HttpConfig> bootstrap) {
@@ -62,16 +68,35 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
         return new HttpAcceptorBuilder(sri, timeout);
     }
 
-    public HttpStack newStack(final ActionResourceIdentifier sri, final HttpStackUserConfig config) {
+    /**
+     * Create a new {@link HttpStack} for the given {@link ScenarioResourceIdentifier} and
+     * {@link ActionResourceIdentifier}.
+     *
+     * @param scenarioSri  the SRI of the {@link Scenario} that ultimately "owns" this stack since it owns
+     *                     the execution of actions.
+     * @param actionSri    the SRI of the {@link Action} that requested this stack (or rather, the {@link Protocol}
+     *                     the action is using requested this stack to be created)
+     * @param eventHandler there are several informational events that are being emitted by the underlying stack and
+     *                     if registered, those are delivered to this event handler.
+     * @param config       unique http configuration just for this "user".
+     * @return
+     */
+    public HttpStack newStack(final ScenarioResourceIdentifier scenarioSri,
+                              final ActionResourceIdentifier actionSri,
+                              final BiConsumer<ConnectionId, Object> eventHandler,
+                              final HttpStackUserConfig config) {
+        assertNotNull(scenarioSri);
+        assertNotNull(actionSri);
         assertNotNull(config);
-        final var address = allocateNewAddress(sri, config);
-        final var stack = new HttpStackWrapper(sri, config, this, address);
-        stacks.put(sri, stack);
+        final var address = allocateNewAddress(actionSri, config);
+        final var stack = new HttpStackWrapper(scenarioSri, actionSri, config, eventHandler, this, address);
+        stacks.put(actionSri, stack);
         return stack;
     }
 
     private void onApplicationEvent(final HttpConnection connection, final Object event) {
-        System.err.println("Snice Http Stack onAppEvent: " + event);
+        // TODO: this is an error. All should be caught by the c.onConnectionInfoEvent as registered
+        //       when the connection was established
     }
 
     /**
@@ -114,9 +139,9 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
         env = environment;
     }
 
-    private HttpTransaction.Builder newTransaction(final HttpRequest request) {
+    private HttpTransaction.Builder newTransaction(final HttpStackWrapper wrapper, final HttpRequest request) {
         assertNotNull(request);
-        return new HttpTransactionBuilder(env, request);
+        return new HttpTransactionBuilder(this, env, wrapper, request);
     }
 
     private void onHttpRequest(final HttpConnection connection, final HttpMessageEvent event) {
@@ -166,8 +191,10 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
         resp.headers().forEach(System.err::println);
     }
 
-    private static record HttpStackWrapper(ActionResourceIdentifier sri,
+    private static record HttpStackWrapper(ScenarioResourceIdentifier scenarioSri,
+                                           ActionResourceIdentifier actionSri,
                                            HttpStackUserConfig config,
+                                           BiConsumer<ConnectionId, Object> eventHandler,
                                            SniceHttpStack actualStack,
                                            URL address) implements HttpStack {
 
@@ -176,12 +203,14 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
             // TODO: overloaded version with no timeout and then we grab from the HttpStackUserConfig? or some default?
             assertNotNull(timeout);
             // TODO: perhaps some sane timeout too? 6 hrs is probably not ok!
-            return actualStack.newHttpAcceptor(sri, timeout);
+            return actualStack.newHttpAcceptor(actionSri, timeout);
         }
 
         @Override
         public HttpTransaction.Builder newTransaction(final HttpRequest request) {
-            return actualStack.newTransaction(request);
+            final var builder = actualStack.newTransaction(this, request);
+            builder.applicationData(scenarioSri);
+            return builder;
         }
     }
 
@@ -236,14 +265,21 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
 
     private static class HttpTransactionBuilder implements HttpTransaction.Builder {
 
+        private final SniceHttpStack sniceHttpStack;
         private final HttpEnvironment<HttpConfig> env;
         private final HttpRequest request;
+        private final HttpStackWrapper wrapper;
 
         private BiConsumer<HttpTransaction, HttpResponse> onResponseFunction;
-        private BiConsumer<HttpTransaction, Object> onEventFunction;
+        private Object applicationData;
 
-        private HttpTransactionBuilder(final HttpEnvironment<HttpConfig> env, final HttpRequest request) {
+        private HttpTransactionBuilder(final SniceHttpStack sniceHttpStack,
+                                       final HttpEnvironment<HttpConfig> env,
+                                       final HttpStackWrapper wrapper,
+                                       final HttpRequest request) {
+            this.sniceHttpStack = sniceHttpStack;
             this.env = env;
+            this.wrapper = wrapper;
             this.request = request;
         }
 
@@ -255,70 +291,87 @@ public class SniceHttpStack extends HttpApplication<HttpConfig> {
         }
 
         @Override
-        public HttpTransaction.Builder onEvent(final BiConsumer<HttpTransaction, Object> f) {
-            assertNotNull(f);
-            onEventFunction = f;
+        public HttpTransaction.Builder applicationData(final Object data) {
+            assertNull(applicationData, "The application data has already been set. You cannot set it again. Reason, it could hide a bug");
+            applicationData = data;
             return this;
         }
 
         @Override
         public HttpTransaction start() {
-            return new DefaultHttpTransaction(env, request, onResponseFunction).start();
+            return new DefaultHttpTransaction(sniceHttpStack, env, request, onResponseFunction, wrapper, Optional.ofNullable(applicationData)).start();
         }
 
-        private static record DefaultHttpTransaction(HttpEnvironment<HttpConfig> env,
-                                                     HttpRequest request,
-                                                     BiConsumer<HttpTransaction, HttpResponse> onResponse)
-                implements HttpTransaction {
+    }
 
-            private DefaultHttpTransaction start() {
-                final var remoteDest = resolveRemoteDest(request);
-                final var remoteHost = remoteDest.getHost();
-                final int remotePort = resolveRemotePort(request, remoteDest);
-                final var transport = resolveTransport(request);
+    private record DefaultHttpTransaction(SniceHttpStack sniceHttpStack,
+                                          HttpEnvironment<HttpConfig> env,
+                                          HttpRequest request,
+                                          BiConsumer<HttpTransaction, HttpResponse> onResponse,
+                                          HttpStackWrapper wrapper,
+                                          Optional<Object> applicationData)
+            implements HttpTransaction {
 
-                // TODO: we may, or may not, want to share an existing connection with others. This is
-                //      currently not supported by Snice Networking but it really should be. However, in
-                //      Sncie Testing, most of the time we probably don't want to share connection outside
-                //      the same Scenario (so we get the statistics etc just for a single scenario and so on...
-                env.connect(transport, remoteHost, remotePort).thenAccept(c -> {
-                    logger.debug("Successfully connected to " + remoteDest);
-                    final var transaction = c.createNewTransaction(request)
-                            .onResponse((tx, resp) -> onResponse.accept(this, resp))
-                            .onTransactionTimeout(tx -> logger.warn("Currently not handling the transaction timing out"))
-                            .onTransactionTerminated(tx -> logger.info("HTTP Transaction terminated"))
-                            .start();
+        private DefaultHttpTransaction start() {
+            final var remoteDest = resolveRemoteDest(request);
+            final var remoteHost = remoteDest.getHost();
+            final int remotePort = resolveRemotePort(request, remoteDest);
+            final var transport = resolveTransport(request);
+
+            // TODO: we may, or may not, want to share an existing connection with others. This is
+            //      currently not supported by Snice Networking but it really should be. However, in
+            //      Sncie Testing, most of the time we probably don't want to share connection outside
+            //      the same Scenario (so we get the statistics etc just for a single scenario and so on...
+            // TODO: in the case the connection fails, we also want to register those connection events etc
+            //       so they are visble in our stack. This is just the happy case right now.
+            env.connect(transport, remoteHost, remotePort).thenAccept(c -> {
+
+                // TODO: we probably want to send an event regarding which address the remoteHost:port
+                //      actually resolved to (assuming it is a FQDN).
+                //      We could just create that event here and ask the SniceHttpStack to dispatch it.
+
+                c.onConnectionInfoEvent((con, event) -> {
+                    if (wrapper.eventHandler != null) {
+                        wrapper.eventHandler.accept(con.id(), event);
+                    }
                 });
-                return this;
+
+                final var transactionBuilder = c.createNewTransaction(request)
+                        .onResponse((tx, resp) -> onResponse.accept(this, resp))
+                        .onTransactionTimeout(tx -> logger.warn("Currently not handling the transaction timing out"))
+                        .onTransactionTerminated(tx -> logger.info("HTTP Transaction terminated"));
+                applicationData.ifPresent(transactionBuilder::withApplicationData);
+                transactionBuilder.start();
+            });
+            return this;
+        }
+
+        private static URI resolveRemoteDest(final HttpRequest req) {
+            return req.header("Host")
+                    .map(host -> (req.isSecure() ? "https://" : "http://") + host.value())
+                    .map(URI::create)
+                    // TODO: check the URI and if still not there, we'll throw an exception.
+                    .orElseThrow(() -> new RuntimeException("Unable to figure out the host"));
+        }
+
+        private static int resolveRemotePort(final HttpRequest req, final URI remoteDest) {
+            if (remoteDest.getPort() != -1) {
+                return remoteDest.getPort();
             }
 
-            private static URI resolveRemoteDest(final HttpRequest req) {
-                return req.header("Host")
-                        .map(host -> (req.isSecure() ? "https://" : "http://") + host.value())
-                        .map(URI::create)
-                        // TODO: check the URI and if still not there, we'll throw an exception.
-                        .orElseThrow(() -> new RuntimeException("Unable to figure out the host"));
-            }
+            return req.isSecure() ? 443 : 80;
+        }
 
-            private static int resolveRemotePort(final HttpRequest req, final URI remoteDest) {
-                if (remoteDest.getPort() != -1) {
-                    return remoteDest.getPort();
-                }
-
-                return req.isSecure() ? 443 : 80;
-            }
-
-            private static Transport resolveTransport(final HttpRequest req) {
-                // TLS is poorly supported by Snice Networking right now so we'll just claim
-                // TCP but configure the Snice stack to do TLS anyway...
+        private static Transport resolveTransport(final HttpRequest req) {
+            // TLS is poorly supported by Snice Networking right now so we'll just claim
+            // TCP but configure the Snice stack to do TLS anyway...
                 /*
                 if (req.isSecure()) {
                     return Transport.tls;
                 }
                  */
 
-                return Transport.tcp;
-            }
+            return Transport.tcp;
         }
     }
 

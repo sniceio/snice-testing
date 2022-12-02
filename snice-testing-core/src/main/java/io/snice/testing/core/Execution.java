@@ -8,7 +8,7 @@ import java.util.List;
 import static io.snice.preconditions.PreConditions.assertNotEmpty;
 
 /**
- * For every {@link Scenario} exec that is executed, the result, logs, metrics etc etc is all
+ * For every {@link Scenario} exec that is executed, the result, logs, metrics etc is all
  * saved in an {@link Execution} and propagated along the chain of executions and eventually
  * collected and processed.
  */

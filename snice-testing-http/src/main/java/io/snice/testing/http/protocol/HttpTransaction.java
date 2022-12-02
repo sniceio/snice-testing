@@ -5,9 +5,12 @@ import io.snice.codecs.codec.http.HttpResponse;
 import io.snice.networking.common.event.ConnectionInfoEvent;
 import io.snice.networking.common.event.SslInfoEvent;
 
+import java.util.Optional;
 import java.util.function.BiConsumer;
 
 public interface HttpTransaction {
+
+    Optional<Object> applicationData();
 
     interface Builder {
 
@@ -27,7 +30,15 @@ public interface HttpTransaction {
          * Note: again, if we re-use an existing connection this will then count all of that traffic, not just this
          * single transaction.
          */
-        Builder onEvent(BiConsumer<HttpTransaction, Object> f);
+        // Builder onEvent(BiConsumer<HttpTransaction, Object> eventHandler);
+
+        /**
+         * <p>
+         * Any data that the application has associated with this transaction.
+         * <p>
+         * Note that this data is completely transparent to the HTTP stack.
+         */
+        Builder applicationData(Object data);
 
         /**
          * Build and start the actual {@link HttpTransaction}. Once the transaction is started,

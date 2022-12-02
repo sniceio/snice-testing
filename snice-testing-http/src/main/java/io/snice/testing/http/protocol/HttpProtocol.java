@@ -1,6 +1,8 @@
 package io.snice.testing.http.protocol;
 
 import io.snice.identity.sri.ActionResourceIdentifier;
+import io.snice.identity.sri.ScenarioResourceIdentifier;
+import io.snice.networking.common.ConnectionId;
 import io.snice.testing.core.common.Expression;
 import io.snice.testing.core.protocol.Protocol;
 import io.snice.testing.core.protocol.ProtocolRegistry;
@@ -11,6 +13,7 @@ import io.snice.testing.http.stack.HttpStackUserConfig;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.BiConsumer;
 
 import static io.snice.preconditions.PreConditions.assertNotNull;
 
@@ -31,7 +34,10 @@ public interface HttpProtocol extends Protocol {
      *
      * @return
      */
-    HttpStack newStack(ActionResourceIdentifier sri, HttpStackUserConfig config);
+    HttpStack newStack(ScenarioResourceIdentifier scenarioSri,
+                       ActionResourceIdentifier actionSri,
+                       BiConsumer<ConnectionId, Object> f,
+                       HttpStackUserConfig config);
 
     HttpConfig config();
 

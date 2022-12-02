@@ -44,7 +44,6 @@ public record DefaultScenarioFsmContext(ActorRef parent,
         final var action = builder.build(scenarioContext, new NextAction("TrapAction", actor, builder.sri()));
         final var newSession = session.attributes(action.attributes());
 
-
         return new ActionJobImpl(builder.sri(), builder.isAsync(), newSession, action, actor);
     }
 

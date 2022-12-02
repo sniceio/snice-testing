@@ -2,8 +2,8 @@ package io.snice.testing.runtime.fsm;
 
 import io.snice.testing.core.Execution;
 import io.snice.testing.core.Session;
+import io.snice.testing.core.protocol.ProtocolRegistry;
 import io.snice.testing.core.scenario.Scenario;
-import io.snice.testing.core.scenario.ScenarioContex;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -13,7 +13,7 @@ public interface ScenarioSupervisorMessages {
     record Init() {
     }
 
-    record Run(Scenario scenario, Session session, ScenarioContex ctx, CompletableFuture<Void> future) {
+    record Run(Scenario scenario, Session session, ProtocolRegistry registry, CompletableFuture<Void> future) {
     }
 
     /**

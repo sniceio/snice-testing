@@ -5,6 +5,7 @@ import io.hektor.actors.fsm.OnStartFunction;
 import io.hektor.core.ActorRef;
 import io.hektor.core.Hektor;
 import io.hektor.core.Props;
+import io.snice.networking.common.docker.DockerSupport;
 import io.snice.testing.core.CoreDsl;
 import io.snice.testing.core.MessageBuilder;
 import io.snice.testing.core.Session;
@@ -12,8 +13,8 @@ import io.snice.testing.core.action.ActionBuilder;
 import io.snice.testing.core.protocol.Protocol;
 import io.snice.testing.core.protocol.ProtocolProvider;
 import io.snice.testing.core.protocol.ProtocolRegistry;
+import io.snice.testing.core.scenario.ExecutionPlan;
 import io.snice.testing.core.scenario.Scenario;
-import io.snice.testing.core.scenario.ScenarioContex;
 import io.snice.testing.runtime.SniceRuntime;
 import io.snice.testing.runtime.fsm.DefaultScenarioSupervisorCtx;
 import io.snice.testing.runtime.fsm.ScenarioSupervisorCtx;
@@ -53,6 +54,7 @@ public class SniceLocalDevRuntime implements SniceRuntime {
     private static final int noOfScnSupervisors = 5;
 
     private final Hektor hektor;
+    private final DockerSupport dockerSupport;
     private List<ActorRef> supervisors;
 
     private final List<CompletionStage<Void>> runningScenarios = Collections.synchronizedList(new ArrayList<>());
@@ -61,8 +63,9 @@ public class SniceLocalDevRuntime implements SniceRuntime {
 
     private final CountDownLatch firstScenarioScheduledLatch = new CountDownLatch(1);
 
-    SniceLocalDevRuntime(final Hektor hektor) {
+    SniceLocalDevRuntime(final Hektor hektor, final DockerSupport dockerSupport) {
         this.hektor = hektor;
+        this.dockerSupport = dockerSupport;
     }
 
     @Override
@@ -173,14 +176,30 @@ public class SniceLocalDevRuntime implements SniceRuntime {
     }
 
     @Override
+    public <T extends ExecutionPlan> CompletionStage<Void> run(final T plan) {
+        return internalRun(plan);
+    }
+
+    private ExecutionPlan createDefaultExecutionPlan(final Scenario scenario, final List<Protocol> protocols, final boolean strictMode) {
+        final var plan = new SimpleExecutionPlan();
+        final var setup = plan.setUp(scenario).strictMode(strictMode);
+        if (protocols != null && !protocols.isEmpty()) {
+            setup.protocols(protocols);
+        }
+
+        return plan;
+    }
+
+
+    @Override
     public CompletionStage<Void> run(final Scenario scenario, final List<Protocol> protocols) {
-        return internalRun(scenario, protocols, true);
+        return internalRun(createDefaultExecutionPlan(scenario, protocols, true));
     }
 
     @Override
     public CompletionStage<Void> run(final ActionBuilder builder) {
         assertNotNull(builder);
-        return internalRun(CoreDsl.scenario("Default Scenario").execute(builder), List.of(), false);
+        return internalRun(createDefaultExecutionPlan(CoreDsl.scenario("Default Scenario").execute(builder), List.of(), false));
     }
 
     @Override
@@ -191,7 +210,7 @@ public class SniceLocalDevRuntime implements SniceRuntime {
             scenario = scenario.execute(messages[i]);
         }
 
-        return internalRun(scenario, List.of(), false);
+        return internalRun(createDefaultExecutionPlan(scenario, List.of(), false));
     }
 
     /**
@@ -201,17 +220,17 @@ public class SniceLocalDevRuntime implements SniceRuntime {
      * but if non-strict mode then we'll try and create a default protocol to satisfy the requirements of
      * the {@link Scenario}.
      *
-     * @param scenario   the scenario to run.
-     * @param protocols  the protocols to use in the scenario.
-     * @param strictMode if true then the list of protocols must satisfy all the protocols needed by the given scenario.
      * @return
      */
-    public CompletionStage<Void> internalRun(final Scenario scenario, final List<Protocol> protocols, final boolean strictMode) {
-        final var protocolsMap = protocols.stream().collect(Collectors.toMap(Protocol::key, Function.identity()));
-        final var requiredProtocols = scenario.protocols();
+    private CompletionStage<Void> internalRun(final ExecutionPlan plan) {
+
+        final var executionSettings = plan.settings();
+
+        final var protocolsMap = executionSettings.protocols().stream().collect(Collectors.toMap(Protocol::key, Function.identity()));
+        final var requiredProtocols = executionSettings.scenario().protocols();
         final var missingProtocols = requiredProtocols.stream().filter(key -> !protocolsMap.containsKey(key)).collect(toList());
 
-        if (!missingProtocols.isEmpty() && strictMode) {
+        if (!missingProtocols.isEmpty() && executionSettings.strictMode()) {
             throw new IllegalArgumentException("The following required protocol(s) for running the scenario are missing: " + missingProtocols);
         }
 
@@ -224,14 +243,15 @@ public class SniceLocalDevRuntime implements SniceRuntime {
         //      Currently, that is not the case.
         protocolsMap.values().forEach(Protocol::start);
 
-        final var ctx = new ScenarioContex(registry);
-        final var session = new Session(scenario.name());
+        final var envVariables = System.getenv();
+        final var session = new Session(executionSettings.name()).environment(envVariables);
 
         final var future = new CompletableFuture<Void>();
-        nextSupervisor().tell(new ScenarioSupervisorMessages.Run(scenario, session, ctx, future));
+        nextSupervisor().tell(new ScenarioSupervisorMessages.Run(executionSettings.scenario(), session, registry, future));
         runningScenarios.add(future);
         firstScenarioScheduledLatch.countDown();
         return future;
+
     }
 
     /**
@@ -253,7 +273,7 @@ public class SniceLocalDevRuntime implements SniceRuntime {
                 .map(Optional::ofNullable)
                 .filter(Optional::isPresent)
                 .map(Optional::get)
-                .map(ProtocolProvider::createDefaultProtocol)
+                .map(protocolProvider -> protocolProvider.createDefaultProtocol(dockerSupport))
                 .collect(Collectors.toUnmodifiableList());
     }
 

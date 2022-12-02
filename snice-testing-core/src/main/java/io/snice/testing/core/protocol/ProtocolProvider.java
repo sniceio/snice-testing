@@ -1,5 +1,7 @@
 package io.snice.testing.core.protocol;
 
+import io.snice.networking.common.docker.DockerSupport;
+
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.function.Function;
@@ -18,7 +20,7 @@ public interface ProtocolProvider {
      * are happy with the defaults. It primarily works for basic test scenarios and is really
      * part of the "instant gratification" for new Snice Test developers.
      */
-    Protocol createDefaultProtocol();
+    Protocol createDefaultProtocol(DockerSupport dockerSupport);
 
     ProtocolRegistry.Key key();
 

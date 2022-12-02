@@ -7,12 +7,18 @@ import io.hektor.fsm.FSM;
 import io.hektor.fsm.visitor.PlantUmlVisitor;
 import io.snice.functional.Either;
 import io.snice.identity.sri.ActionResourceIdentifier;
+import io.snice.networking.common.event.ConnectionInfoEvent;
 import io.snice.testing.core.action.Action;
 import io.snice.testing.core.scenario.Scenario;
 
 import java.util.List;
 
 import static io.hektor.fsm.docs.Label.label;
+import static io.snice.testing.runtime.fsm.ScenarioState.ERROR;
+import static io.snice.testing.runtime.fsm.ScenarioState.EXEC;
+import static io.snice.testing.runtime.fsm.ScenarioState.JOIN;
+import static io.snice.testing.runtime.fsm.ScenarioState.SYNC;
+import static io.snice.testing.runtime.fsm.ScenarioState.WRAP;
 
 /**
  * Implements the following FSM (plantuml, just to save it with the code, copy paste to plantuml.com)
@@ -63,12 +69,12 @@ public class ScenarioFsm {
         final var builder = FSM.of(ScenarioState.class).ofContextType(ScenarioFsmContext.class).withDataType(ScenarioData.class);
 
         final var init = builder.withInitialState(ScenarioState.INIT);
-        final var exec = builder.withState(ScenarioState.EXEC);
+        final var exec = builder.withState(EXEC);
         final var sync = builder.withState(ScenarioState.SYNC);
         final var async = builder.withTransientState(ScenarioState.ASYNC);
         final var join = builder.withState(ScenarioState.JOIN);
-        final var wrap = builder.withState(ScenarioState.WRAP);
-        final var error = builder.withTransientState(ScenarioState.ERROR);
+        final var wrap = builder.withState(WRAP);
+        final var error = builder.withTransientState(ERROR);
         final var terminated = builder.withFinalState(ScenarioState.TERMINATED);
 
         exec.withEnterAction(ScenarioFsm::onEnterExec, label("Execute Next Action"));
@@ -78,9 +84,12 @@ public class ScenarioFsm {
 
         init.transitionTo(ScenarioState.INIT).onEvent(ScenarioMessage.Init.class).withAction(ScenarioFsm::onInit, label("Validate Scenario"));
 
-        init.transitionTo(ScenarioState.EXEC).onEvent(ScenarioMessage.OkScenario.class);
+        init.transitionTo(EXEC).onEvent(ScenarioMessage.OkScenario.class);
         init.transitionTo(ScenarioState.TERMINATED).onEvent(ScenarioMessage.BadScenario.class);
 
+
+        exec.transitionTo(EXEC).onEvent(ConnectionInfoEvent.class)
+                .withAction(ScenarioFsm::onConnectionInfoEvent, label("Connection Info"));
 
         exec.transitionTo(ScenarioState.ASYNC)
                 .onEvent(ScenarioMessage.Exec.class)
@@ -91,21 +100,23 @@ public class ScenarioFsm {
                 .onEvent(ScenarioMessage.Exec.class)
                 .withAction(ScenarioFsm::onExecute, label(PREPARE_AND_START_JOB_LABEL));
 
-        exec.transitionTo(ScenarioState.EXEC)
+        exec.transitionTo(EXEC)
                 .onEvent(ActionMessage.ActionFinished.class)
                 .withAction(ScenarioFsm::onActionFinished, label(ACTION_FINISHED_LABEL));
 
-        exec.transitionTo(ScenarioState.EXEC).onEvent(LifecycleEvent.Terminated.class)
+        exec.transitionTo(EXEC).onEvent(LifecycleEvent.Terminated.class)
                 .withAction(ScenarioFsm::onActorTerminated, label(ACTOR_TERMINATED_LABEL));
 
-        exec.transitionTo(ScenarioState.WRAP).onEvent(ScenarioMessage.NoMoreActions.class);
+        exec.transitionTo(WRAP).onEvent(ScenarioMessage.NoMoreActions.class);
 
-        sync.transitionTo(ScenarioState.ERROR).onEvent(ActionMessage.ActionFinished.class)
+        sync.transitionTo(SYNC).onEvent(ConnectionInfoEvent.class)
+                .withAction(ScenarioFsm::onConnectionInfoEvent, label("Connection Info"));
+        sync.transitionTo(ERROR).onEvent(ActionMessage.ActionFinished.class)
                 .withGuard(ScenarioFsm::isUnknownAction, label("Unknown Action"))
                 .withTransformation(actionFinished -> ScenarioState.SYNC.toString(), label("evt -> \"SYNC\""))
                 .withAction((evt, ctx, data) -> onUnknownJob(ScenarioState.SYNC, evt, ctx), label("Process unknown action"));
 
-        sync.transitionTo(ScenarioState.EXEC).onEvent(ActionMessage.ActionFinished.class)
+        sync.transitionTo(EXEC).onEvent(ActionMessage.ActionFinished.class)
                 .withGuard(ScenarioFsm::isOutstandingSynchronousActionGuard, label("isOutstandingSyncAction"))
                 .withAction(ScenarioFsm::onSyncActionFinished, label("Process sync action finished"));
 
@@ -126,12 +137,14 @@ public class ScenarioFsm {
         sync.transitionTo(ScenarioState.SYNC).onEvent(LifecycleEvent.Terminated.class)
                 .withAction(ScenarioFsm::onActorTerminated, label(ACTOR_TERMINATED_LABEL));
 
-        async.transitionTo(ScenarioState.EXEC).asDefaultTransition();
+        async.transitionTo(EXEC).asDefaultTransition();
 
-        wrap.transitionTo(ScenarioState.WRAP).onEvent(ActionMessage.ActionFinished.class)
+        wrap.transitionTo(WRAP).onEvent(ConnectionInfoEvent.class)
+                .withAction(ScenarioFsm::onConnectionInfoEvent, label("Connection Info"));
+        wrap.transitionTo(WRAP).onEvent(ActionMessage.ActionFinished.class)
                 .withAction(ScenarioFsm::onActionFinished, label(ACTION_FINISHED_LABEL));
 
-        wrap.transitionTo(ScenarioState.WRAP).onEvent(LifecycleEvent.Terminated.class)
+        wrap.transitionTo(WRAP).onEvent(LifecycleEvent.Terminated.class)
                 .withAction(ScenarioFsm::onActorTerminated, label(ACTOR_TERMINATED_LABEL));
 
         wrap.transitionTo(ScenarioState.TERMINATED).onEvent(ScenarioMessage.Terminate.class);
@@ -141,10 +154,12 @@ public class ScenarioFsm {
         // is managed by the original state doing a transformation of the original message to a string
         // which we'll map on below.
         error.transitionTo(ScenarioState.SYNC).onEvent(String.class).withGuard(ScenarioState.SYNC.toString()::equals, label("s == \"SYNC\""));
-        error.transitionTo(ScenarioState.EXEC).asDefaultTransition();
+        error.transitionTo(EXEC).asDefaultTransition();
 
+        join.transitionTo(JOIN).onEvent(ConnectionInfoEvent.class)
+                .withAction(ScenarioFsm::onConnectionInfoEvent, label("Connection Info"));
         // TODO:
-        join.transitionTo(ScenarioState.EXEC).onEvent(String.class);
+        join.transitionTo(EXEC).onEvent(String.class);
 
         definition = builder.build();
     }
@@ -219,6 +234,14 @@ public class ScenarioFsm {
         // with the FQDN of where the listening point is.
         data.session(job.session());
         job.start();
+    }
+
+    /**
+     * The underlying stack is emitting several events regarding the state of the connection. We will consume those
+     * since we e.g. need to know exactly how many bytes was sent/received etc.
+     */
+    private static void onConnectionInfoEvent(final ConnectionInfoEvent e, final ScenarioFsmContext ctx, final ScenarioData data) {
+        // TODO
     }
 
     /**

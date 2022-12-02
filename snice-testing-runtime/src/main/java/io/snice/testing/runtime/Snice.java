@@ -3,6 +3,7 @@ package io.snice.testing.runtime;
 import io.snice.testing.core.MessageBuilder;
 import io.snice.testing.core.action.ActionBuilder;
 import io.snice.testing.core.protocol.Protocol;
+import io.snice.testing.core.scenario.ExecutionPlan;
 import io.snice.testing.core.scenario.Scenario;
 import io.snice.testing.runtime.impl.SniceLocalDevRuntimeProvider;
 import io.snice.testing.runtime.spi.SniceRuntimeProvider;
@@ -77,12 +78,17 @@ public class Snice {
         return start(new String[]{}).runtime().run(message);
     }
 
+
     public static CompletionStage<Void> run(final Scenario scenario, final Protocol.Builder... protocols) {
         return start(new String[]{}).runtime().run(scenario, protocols);
     }
 
     public static CompletionStage<Void> run(final Scenario scenario, final List<Protocol> protocols) {
         return start(new String[]{}).runtime().run(scenario, protocols);
+    }
+
+    public static <T extends ExecutionPlan> CompletionStage<Void> run(final T plan) {
+        return start(new String[]{}).runtime().run(plan);
     }
 
     public static Snice start(final String... args) {

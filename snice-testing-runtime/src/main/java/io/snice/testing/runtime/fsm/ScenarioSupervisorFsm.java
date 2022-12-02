@@ -30,7 +30,7 @@ public class ScenarioSupervisorFsm {
                 .onEvent(ScenarioSupervisorMessages.Run.class)
                 .withAction((run, ctx, data) -> {
                     data.storeRun(run);
-                    ctx.runScenario(run.session(), run.scenario(), run.ctx());
+                    ctx.runScenario(run.session(), run.scenario(), run.registry());
                 });
 
         running.transitionTo(RUNNING)
