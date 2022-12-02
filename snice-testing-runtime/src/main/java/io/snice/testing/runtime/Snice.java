@@ -3,18 +3,23 @@ package io.snice.testing.runtime;
 import io.snice.testing.core.MessageBuilder;
 import io.snice.testing.core.action.ActionBuilder;
 import io.snice.testing.core.protocol.Protocol;
-import io.snice.testing.core.scenario.ExecutionPlan;
 import io.snice.testing.core.scenario.Scenario;
+import io.snice.testing.core.scenario.Simulation;
+import io.snice.testing.core.scenario.SimulationException;
 import io.snice.testing.runtime.impl.SniceLocalDevRuntimeProvider;
 import io.snice.testing.runtime.spi.SniceRuntimeProvider;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.Namespace;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
@@ -27,6 +32,8 @@ import java.util.concurrent.ExecutionException;
 public class Snice {
 
     private static final String DEFAULT_RUNTIME_PROVIDER = SniceLocalDevRuntimeProvider.class.getName();
+
+    private static final Logger logger = LoggerFactory.getLogger(Snice.class);
 
     private final SniceRuntime runtime;
 
@@ -42,11 +49,17 @@ public class Snice {
         runtime.sync();
     }
 
+    private static final String ARG_RUNTIME = "runtime";
+    private static final String ARG_SIMULATION = "simulation";
+
     private static ArgumentParser createArgParser() {
         final var parser = ArgumentParsers.newFor("snice").build();
-        parser.addArgument("--runtime")
+        parser.addArgument("--" + ARG_RUNTIME)
                 .help("The fully-qualified class name of the runtime provider")
                 .setDefault(DEFAULT_RUNTIME_PROVIDER);
+
+        parser.addArgument("--" + ARG_SIMULATION)
+                .help("The fully-qualified class name of the Simulation to run");
 
         return parser;
     }
@@ -87,13 +100,26 @@ public class Snice {
         return start(new String[]{}).runtime().run(scenario, protocols);
     }
 
-    public static <T extends ExecutionPlan> CompletionStage<Void> run(final T plan) {
+    public static <T extends Simulation> CompletionStage<Void> run(final T plan) {
         return start(new String[]{}).runtime().run(plan);
     }
 
-    public static Snice start(final String... args) {
+    /**
+     * Parse the command line arguments and bootstrap the runtime system. Optionally, load and kick-off
+     * any {@link Simulation}s that may have been given on the command line.
+     *
+     * @param args the command line arguments
+     * @return an instance of {@link Snice} with a loaded and started {@link Runtime}. It is guaranteed that
+     * the {@link Runtime} has successfully been started before returning. If not, we will bail out.
+     * @throws SimulationException.LoadSimulationException if a {@link Simulation} has been specified on the command
+     *                                                     line and we are unable to load it (for whatever reason),
+     *                                                     we'll bail out and the system will grind to a halt.
+     */
+    public static Snice start(final String... args) throws SimulationException.LoadSimulationException {
         final var cli = parseArgs(args);
-        final var runtimeProviderClass = cli.namespace().get("runtime");
+        final var simulationMaybe = loadSimulation(cli);
+
+        final var runtimeProviderClass = cli.namespace().get(ARG_RUNTIME);
         final var runtime = ServiceLoader.load(SniceRuntimeProvider.class)
                 .stream()
                 .map(ServiceLoader.Provider::get)
@@ -115,7 +141,28 @@ public class Snice {
         }
 
         final var snice = new Snice(runtime);
+        simulationMaybe.ifPresent(sim -> snice.runtime().run(sim));
         return snice;
+    }
+
+    private static <T extends Simulation> Optional<T> loadSimulation(final CliArgs cli) throws SimulationException.LoadSimulationException {
+
+        final var className = (String) cli.namespace().get(ARG_SIMULATION);
+        if (className == null || className.isEmpty()) {
+            return Optional.empty();
+        }
+
+        try {
+            final var clazz = (Class<T>) Class.forName(className);
+            final var constructor = clazz.getConstructor(null);
+            return Optional.of(constructor.newInstance(null));
+        } catch (final ClassNotFoundException e) {
+            throw new SimulationException.LoadSimulationException("Unknown Simulation \"" + className + "\"", e);
+        } catch (final NoSuchMethodException e) {
+            throw new SimulationException.LoadSimulationException("Missing default public no-arg constructor for Simulation " + className, e);
+        } catch (final InvocationTargetException | InstantiationException | IllegalAccessException e) {
+            throw new SimulationException.LoadSimulationException("Unable to load Simulation " + className, e);
+        }
     }
 
     public static void main(final String... args) {
