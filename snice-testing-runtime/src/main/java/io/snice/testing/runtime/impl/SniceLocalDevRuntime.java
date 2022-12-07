@@ -107,7 +107,7 @@ public class SniceLocalDevRuntime implements SniceRuntime {
             logger.info("No tasks were ever scheduled, shutting down system");
         }
 
-        sleep(10000);
+        sleep(1000);
         doneFuture.complete(null);
         hektor.terminate();
 

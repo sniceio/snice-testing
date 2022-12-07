@@ -54,14 +54,16 @@
         <hamcrest.version>2.2</hamcrest.version>
         <mockito.version>4.1.0</mockito.version>
         <wiremock.version>2.31.0</wiremock.version>
+        <maven.dependency.plugin.version>3.4.0</maven.dependency.plugin.version>
     </properties>
 
     <modules>
         <module>snice-testing-core</module>
         <module>snice-testing-runtime</module>
         <module>snice-testing-http</module>
-        <module>snice-testing-examples</module>
         <module>snice-testing-sip</module>
+        <module>snice-testing-examples</module>
+        <module>snice-testing-distribution-base</module>
     </modules>
 
     <dependencyManagement>
@@ -252,6 +254,31 @@
     </dependencyManagement>
 
     <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-dependency-plugin</artifactId>
+                    <version>${maven.dependency.plugin.version}</version>
+                    <executions>
+                        <execution>
+                            <id>copy-dependencies</id>
+                            <phase>package</phase>
+                            <goals>
+                                <goal>copy-dependencies</goal>
+                            </goals>
+                            <configuration>
+                                <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                                <overWriteReleases>false</overWriteReleases>
+                                <overWriteSnapshots>false</overWriteSnapshots>
+                                <overWriteIfNewer>true</overWriteIfNewer>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
