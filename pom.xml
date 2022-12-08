@@ -45,15 +45,15 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <io.snice.commons.version>0.1.10</io.snice.commons.version>
         <io.snice.codecs.version>0.0.10</io.snice.codecs.version>
-        <io.snice.networking.version>0.0.10</io.snice.networking.version>
+        <io.snice.networking.version>0.0.11-SNAPSHOT</io.snice.networking.version>
         <logback.version>1.2.10</logback.version>
         <argparse4j.version>0.9.0</argparse4j.version>
-        <hektor.version>0.0.5</hektor.version>
+        <hektor.version>0.0.6-SNAPSHOT</hektor.version>
         <maven.compiler.release>17</maven.compiler.release>
         <junit5.version>5.8.2</junit5.version>
         <hamcrest.version>2.2</hamcrest.version>
         <mockito.version>4.1.0</mockito.version>
-        <wiremock.version>2.31.0</wiremock.version>
+        <wiremock.version>2.35.0</wiremock.version>
         <maven.dependency.plugin.version>3.4.0</maven.dependency.plugin.version>
     </properties>
 
@@ -68,6 +68,34 @@
 
     <dependencyManagement>
         <dependencies>
+
+            <dependency>
+                <groupId>ch.qos.logback.contrib</groupId>
+                <artifactId>logback-json-classic</artifactId>
+                <version>0.1.5</version>
+                <scope>runtime</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>ch.qos.logback.contrib</groupId>
+                <artifactId>logback-jackson</artifactId>
+                <version>0.1.5</version>
+                <scope>runtime</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>2.14.1</version>
+                <scope>runtime</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>net.logstash.logback</groupId>
+                <artifactId>logstash-logback-encoder</artifactId>
+                <version>7.2</version>
+                <scope>runtime</scope>
+            </dependency>
 
             <dependency>
                 <groupId>io.snice</groupId>
