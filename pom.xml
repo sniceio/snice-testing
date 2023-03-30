@@ -36,7 +36,7 @@
 
     <scm>
         <connection>scm:git:git@github.com:sniceio/snice-testing.git</connection>
-        <developerConnection>scm:git:git@github.com:sniceio/snice-testing.git</developerConnection>
+	<developerConnection>scm:git:https://github.com/sniceio/snice-testing.git</developerConnection>
         <url>git@github.com:sniceio/snice-testing.git</url>
         <tag>HEAD</tag>
     </scm>
@@ -45,7 +45,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <io.snice.commons.version>0.1.11</io.snice.commons.version>
         <io.snice.codecs.version>0.0.10</io.snice.codecs.version>
-        <io.snice.networking.version>0.0.11-SNAPSHOT</io.snice.networking.version>
+        <io.snice.networking.version>0.0.11</io.snice.networking.version>
         <logback.version>1.2.10</logback.version>
         <argparse4j.version>0.9.0</argparse4j.version>
         <hektor.version>0.0.5</hektor.version>
@@ -65,6 +65,43 @@
         <module>snice-testing-examples</module>
         <module>snice-testing-distribution-base</module>
     </modules>
+
+    <profiles>
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.0.1</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.plugins</groupId>
+                        <artifactId>nexus-staging-maven-plugin</artifactId>
+                        <version>1.6.13</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <serverId>ossrh</serverId>
+                            <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+                            <autoReleaseAfterClose>true</autoReleaseAfterClose>
+                            <stagingProgressTimeoutMinutes>10</stagingProgressTimeoutMinutes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
 
     <dependencyManagement>
         <dependencies>
