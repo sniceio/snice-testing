@@ -20,7 +20,6 @@ public record ResponseProcessor(String name,
                                 Action next) {
 
     public void process(final HttpTransaction transaction, final HttpResponse response) {
-
         final var result = Check.check(response, session, checks);
         final var checkResults = result.right();
         final var failedChecks = checkResults.stream().filter(CheckResult::isFailure).findAny().isPresent();

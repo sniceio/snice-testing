@@ -1,0 +1,15 @@
+networkInterfaces:
+  - name: default
+    listen: http://127.0.0.1:5555
+    transport: tcp
+
+    # http:
+    # userPlane:
+    # enable: true
+    # The name of hte network interface to use for GTP-U.
+    # If the name doesn't match, the stack will error out.
+    # nic: gtpu
+
+    # controlPlane:
+    # enable: true
+    # nic: gtpc

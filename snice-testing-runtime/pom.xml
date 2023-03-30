@@ -51,18 +51,8 @@
       </dependency>
 
       <dependency>
-          <groupId>ch.qos.logback.contrib</groupId>
-          <artifactId>logback-json-classic</artifactId>
-      </dependency>
-
-      <dependency>
           <groupId>net.logstash.logback</groupId>
           <artifactId>logstash-logback-encoder</artifactId>
-      </dependency>
-
-      <dependency>
-          <groupId>ch.qos.logback.contrib</groupId>
-          <artifactId>logback-jackson</artifactId>
       </dependency>
 
       <dependency>
