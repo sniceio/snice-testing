@@ -146,16 +146,16 @@ public class Snice {
     }
 
     private static <T extends Simulation> Optional<T> loadSimulation(final CliArgs cli) throws SimulationException.LoadSimulationException {
+        return Optional.ofNullable((String) cli.namespace().get(ARG_SIMULATION))
+                .or(Snice::findSimulationAutomatically)
+                .map(Snice::loadSimulationClass);
+    }
 
-        final var className = (String) cli.namespace().get(ARG_SIMULATION);
-        if (className == null || className.isEmpty()) {
-            return Optional.empty();
-        }
-
+    private static <T extends Simulation> T loadSimulationClass(final String className) {
         try {
             final var clazz = (Class<T>) Class.forName(className);
             final var constructor = clazz.getConstructor(null);
-            return Optional.of(constructor.newInstance(null));
+            return constructor.newInstance(null);
         } catch (final ClassNotFoundException e) {
             throw new SimulationException.LoadSimulationException("Unknown Simulation \"" + className + "\"", e);
         } catch (final NoSuchMethodException e) {
@@ -163,6 +163,26 @@ public class Snice {
         } catch (final InvocationTargetException | InstantiationException | IllegalAccessException e) {
             throw new SimulationException.LoadSimulationException("Unable to load Simulation " + className, e);
         }
+    }
+
+    /**
+     * Overly simplified but good enough for now. It tries to find the main class, assuming it is also
+     * a {@link Simulation}, which it currently doesn't check but that'll blow up in the {@link #loadSimulation(CliArgs)}
+     * so the user would know.
+     *
+     * @return
+     */
+    private static Optional<String> findSimulationAutomatically() {
+        final var stack = Thread.currentThread().getStackTrace();
+        final var mainMaybe = stack[stack.length - 1];
+        final var className = mainMaybe.getClassName();
+        try {
+            loadSimulationClass(className);
+        } catch (final ClassCastException e) {
+            // doesn't implement Simulation. Ignore and move on.
+            return Optional.empty();
+        }
+        return Optional.of(className);
     }
 
     public static void main(final String... args) {

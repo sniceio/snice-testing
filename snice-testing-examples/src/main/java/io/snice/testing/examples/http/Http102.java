@@ -13,7 +13,7 @@ public class Http102 {
 
         // 1. You can optionally specify the base URL to use for all future
         //    requests, so you do not have to type it all out.
-        final var http = http().baseUrl("http://honeypot.snice.io:8000");
+        final var http = http().baseUrl("https://honeypot.snice.io");
 
         // 2. Create the HTTP GET request and add any checks to it.
         //    Note that since we now have a base url, the final FQDN will be
