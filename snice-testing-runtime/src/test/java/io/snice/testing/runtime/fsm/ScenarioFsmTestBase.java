@@ -1,12 +1,12 @@
 package io.snice.testing.runtime.fsm;
 
-import io.hektor.actors.Alert;
-import io.hektor.actors.LoggingSupport;
 import io.hektor.core.ActorPath;
 import io.hektor.core.LifecycleEvent;
 import io.hektor.fsm.FSM;
 import io.hektor.fsm.TransitionListener;
 import io.snice.identity.sri.ActionResourceIdentifier;
+import io.snice.logging.Alert;
+import io.snice.logging.Logging;
 import io.snice.testing.core.Execution;
 import io.snice.testing.core.Session;
 import io.snice.testing.core.action.Action;
@@ -38,7 +38,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-public class ScenarioFsmTestBase implements LoggingSupport {
+public class ScenarioFsmTestBase implements Logging {
 
     protected static final Logger logger = LoggerFactory.getLogger(ScenarioFsmTestBase.class);
 
@@ -434,11 +434,6 @@ public class ScenarioFsmTestBase implements LoggingSupport {
     @Override
     public Logger getLogger() {
         return logger;
-    }
-
-    @Override
-    public Object getUUID() {
-        return uuid;
     }
 
     private record UnhandledEvent() implements Alert {

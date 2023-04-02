@@ -53,6 +53,7 @@ public class SniceLocalDevRuntime implements SniceRuntime {
     // TODO: make it configurable
     private static final int noOfScnSupervisors = 5;
 
+    private final int waitTime;
     private final Hektor hektor;
     private final DockerSupport dockerSupport;
     private List<ActorRef> supervisors;
@@ -63,7 +64,8 @@ public class SniceLocalDevRuntime implements SniceRuntime {
 
     private final CountDownLatch firstScenarioScheduledLatch = new CountDownLatch(1);
 
-    SniceLocalDevRuntime(final Hektor hektor, final DockerSupport dockerSupport) {
+    SniceLocalDevRuntime(final int waitTime, final Hektor hektor, final DockerSupport dockerSupport) {
+        this.waitTime = waitTime;
         this.hektor = hektor;
         this.dockerSupport = dockerSupport;
     }
@@ -75,7 +77,7 @@ public class SniceLocalDevRuntime implements SniceRuntime {
 
     private boolean waitForFirstTaskToBeScheduled() {
         try {
-            firstScenarioScheduledLatch.await(1, TimeUnit.SECONDS);
+            firstScenarioScheduledLatch.await(waitTime, TimeUnit.SECONDS);
             return firstScenarioScheduledLatch.getCount() <= 0;
         } catch (final InterruptedException e) {
             return false;

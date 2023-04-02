@@ -6,6 +6,7 @@ import io.hektor.config.WorkerThreadExecutorConfig;
 import io.hektor.core.Hektor;
 import io.snice.networking.common.docker.DockerSupport;
 import io.snice.testing.runtime.CliArgs;
+import io.snice.testing.runtime.Snice;
 import io.snice.testing.runtime.SniceRuntime;
 import io.snice.testing.runtime.spi.SniceRuntimeProvider;
 
@@ -15,9 +16,12 @@ public class SniceLocalDevRuntimeProvider implements SniceRuntimeProvider {
 
     @Override
     public SniceRuntime create(final CliArgs args) {
+        // This could return null so that's why we check later because the implicit conversion
+        // from Integer to int would blow up on NPE
+        final var waitTime = args.namespace().getInt(Snice.ARG_WAIT_FOR_SIMULATION);
         final var hektor = Hektor.withName("Snice").withConfiguration(defaultHektorConfig()).build();
         final var dockerSupport = DockerSupport.of().withReadFromSystemProperties().build();
-        return new SniceLocalDevRuntime(hektor, dockerSupport);
+        return new SniceLocalDevRuntime(waitTime != null ? waitTime : 1, hektor, dockerSupport);
     }
 
     private static HektorConfiguration defaultHektorConfig() {
