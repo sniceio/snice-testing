@@ -178,7 +178,7 @@ public class Snice {
         final var className = mainMaybe.getClassName();
         try {
             loadSimulationClass(className);
-        } catch (final ClassCastException e) {
+        } catch (final SimulationException.LoadSimulationException e) {
             // doesn't implement Simulation. Ignore and move on.
             return Optional.empty();
         }

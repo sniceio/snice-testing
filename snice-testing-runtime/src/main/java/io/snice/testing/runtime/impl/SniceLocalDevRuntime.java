@@ -75,7 +75,7 @@ public class SniceLocalDevRuntime implements SniceRuntime {
 
     private boolean waitForFirstTaskToBeScheduled() {
         try {
-            firstScenarioScheduledLatch.await(1, TimeUnit.SECONDS);
+            firstScenarioScheduledLatch.await(100, TimeUnit.SECONDS);
             return firstScenarioScheduledLatch.getCount() <= 0;
         } catch (final InterruptedException e) {
             return false;
