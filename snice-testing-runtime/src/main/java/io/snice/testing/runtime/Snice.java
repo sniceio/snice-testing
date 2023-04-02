@@ -49,14 +49,25 @@ public class Snice {
         runtime.sync();
     }
 
-    private static final String ARG_RUNTIME = "runtime";
-    private static final String ARG_SIMULATION = "simulation";
+    public static final String ARG_RUNTIME = "runtime";
+    public static final String ARG_SIMULATION = "simulation";
+
+    /**
+     * When we start Snice, this is the amount of time we will wait for a simulation to
+     * be schedule and start running.
+     */
+    public static final String ARG_WAIT_FOR_SIMULATION = "wait";
 
     private static ArgumentParser createArgParser() {
         final var parser = ArgumentParsers.newFor("snice").build();
         parser.addArgument("--" + ARG_RUNTIME)
                 .help("The fully-qualified class name of the runtime provider")
                 .setDefault(DEFAULT_RUNTIME_PROVIDER);
+
+        parser.addArgument("--" + ARG_WAIT_FOR_SIMULATION)
+                .help("The amount of time (in seconds) we will wait for a scenario to be scheduled, after which the container will shut down again")
+                .type(Integer.TYPE)
+                .setDefault(1);
 
         parser.addArgument("--" + ARG_SIMULATION)
                 .help("The fully-qualified class name of the Simulation to run");
@@ -146,7 +157,7 @@ public class Snice {
     }
 
     private static <T extends Simulation> Optional<T> loadSimulation(final CliArgs cli) throws SimulationException.LoadSimulationException {
-        return Optional.ofNullable((String) cli.namespace().get(ARG_SIMULATION))
+        return Optional.ofNullable(cli.namespace().getString(ARG_SIMULATION))
                 .or(Snice::findSimulationAutomatically)
                 .map(Snice::loadSimulationClass);
     }
@@ -156,6 +167,8 @@ public class Snice {
             final var clazz = (Class<T>) Class.forName(className);
             final var constructor = clazz.getConstructor(null);
             return constructor.newInstance(null);
+        } catch (final ClassCastException e) {
+            throw new SimulationException.LoadSimulationException("The class \"" + className + "\" is not of type Simulation", e);
         } catch (final ClassNotFoundException e) {
             throw new SimulationException.LoadSimulationException("Unknown Simulation \"" + className + "\"", e);
         } catch (final NoSuchMethodException e) {
