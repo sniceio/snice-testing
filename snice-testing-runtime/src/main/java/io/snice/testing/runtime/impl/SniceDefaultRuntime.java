@@ -46,9 +46,9 @@ import static io.snice.preconditions.PreConditions.assertArrayNotEmpty;
 import static io.snice.preconditions.PreConditions.assertNotNull;
 import static java.util.stream.Collectors.toList;
 
-public class SniceLocalDevRuntime implements SniceRuntime {
+public class SniceDefaultRuntime implements SniceRuntime {
 
-    private static final Logger logger = LoggerFactory.getLogger(SniceLocalDevRuntime.class);
+    private static final Logger logger = LoggerFactory.getLogger(SniceDefaultRuntime.class);
 
     // TODO: make it configurable
     private static final int noOfScnSupervisors = 5;
@@ -64,7 +64,7 @@ public class SniceLocalDevRuntime implements SniceRuntime {
 
     private final CountDownLatch firstScenarioScheduledLatch = new CountDownLatch(1);
 
-    SniceLocalDevRuntime(final int waitTime, final Hektor hektor, final DockerSupport dockerSupport) {
+    public SniceDefaultRuntime(final int waitTime, final Hektor hektor, final DockerSupport dockerSupport) {
         this.waitTime = waitTime;
         this.hektor = hektor;
         this.dockerSupport = dockerSupport;
@@ -110,8 +110,6 @@ public class SniceLocalDevRuntime implements SniceRuntime {
         }
 
         // TODO: dont' remember why I need this one here.
-        sleep(1000);
-        // doneFuture.complete(null);
         hektor.terminate().whenComplete((aVoid, error) -> doneFuture.complete(null));
     }
 
