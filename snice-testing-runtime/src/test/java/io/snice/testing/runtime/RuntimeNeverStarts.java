@@ -22,7 +22,7 @@ public class RuntimeNeverStarts implements SniceRuntime {
     }
 
     @Override
-    public Future<Void> sync() {
+    public CompletionStage<Void> sync() {
         return null;
     }
 

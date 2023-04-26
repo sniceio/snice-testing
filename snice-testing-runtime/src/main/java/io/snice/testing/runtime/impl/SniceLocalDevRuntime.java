@@ -71,7 +71,7 @@ public class SniceLocalDevRuntime implements SniceRuntime {
     }
 
     @Override
-    public Future<Void> sync() {
+    public CompletionStage<Void> sync() {
         return doneFuture;
     }
 
@@ -109,12 +109,10 @@ public class SniceLocalDevRuntime implements SniceRuntime {
             logger.info("No tasks were ever scheduled, shutting down system");
         }
 
+        // TODO: dont' remember why I need this one here.
         sleep(1000);
-        doneFuture.complete(null);
-        hektor.terminate();
-
-        // TODO: stupid hektor that isn't shutting down because it isn't implemented!
-        System.exit(1);
+        // doneFuture.complete(null);
+        hektor.terminate().whenComplete((aVoid, error) -> doneFuture.complete(null));
     }
 
 
