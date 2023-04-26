@@ -45,8 +45,8 @@ public class Snice {
         return runtime;
     }
 
-    public void sync() {
-        runtime.sync();
+    public CompletionStage<Void> sync() {
+        return runtime.sync();
     }
 
     public static final String ARG_RUNTIME = "runtime";

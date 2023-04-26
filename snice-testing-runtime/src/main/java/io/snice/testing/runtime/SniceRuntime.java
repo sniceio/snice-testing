@@ -27,7 +27,7 @@ public interface SniceRuntime {
      *
      * @return
      */
-    Future<Void> sync();
+    CompletionStage<Void> sync();
 
     /**
      * Run the given {@link Scenario}.

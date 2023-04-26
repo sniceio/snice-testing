@@ -31,7 +31,7 @@ public class FakeRuntime implements SniceRuntime {
     }
 
     @Override
-    public Future<Void> sync() {
+    public CompletionStage<Void> sync() {
         return syncFuture;
     }
 
