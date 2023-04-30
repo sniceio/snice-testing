@@ -38,8 +38,14 @@ public class Snice {
         return runtime;
     }
 
-    public CompletionStage<Void> sync() {
-        return runtime.sync();
+    public void sync() {
+        try {
+            runtime.sync().toCompletableFuture().get();
+        } catch (final InterruptedException e) {
+            throw new RuntimeException(e);
+        } catch (final ExecutionException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -90,7 +96,7 @@ public class Snice {
     }
 
     public static Snice start(final RuntimeConfig runtimeConfig, final Optional<SimulationConfig> simulationConfig) throws SimulationException.LoadSimulationException {
-        final Optional<Simulation> simulationMaybe = simulationConfig.flatMap(conf -> loadSimulation(conf));
+        final Optional<Simulation> simulationMaybe = loadSimulation(simulationConfig);
 
         final var runtimeProviderClass = runtimeConfig.getRuntimeProvider();
         final var runtime = ServiceLoader.load(SniceRuntimeProvider.class)
@@ -119,8 +125,8 @@ public class Snice {
 
     }
 
-    private static <T extends Simulation> Optional<T> loadSimulation(final SimulationConfig config) throws SimulationException.LoadSimulationException {
-        return Optional.ofNullable(config.getSimulation())
+    private static <T extends Simulation> Optional<T> loadSimulation(final Optional<SimulationConfig> config) throws SimulationException.LoadSimulationException {
+        return config.map(SimulationConfig::getSimulation)
                 .or(Snice::findSimulationAutomatically)
                 .map(Snice::loadSimulationClass);
     }
@@ -143,7 +149,7 @@ public class Snice {
 
     /**
      * Overly simplified but good enough for now. It tries to find the main class, assuming it is also
-     * a {@link Simulation}, which it currently doesn't check but that'll blow up in the {@link #loadSimulation(SimulationConfig)}
+     * a {@link Simulation}, which it currently doesn't check but that'll blow up in the {@link #loadSimulation(Optional)}
      * so the user would know.
      *
      * @return
@@ -161,7 +167,7 @@ public class Snice {
         return Optional.of(className);
     }
 
-    public static void main(final String... args) {
+    public static void main(final String... args) throws Exception {
         start(args).sync();
     }
 }

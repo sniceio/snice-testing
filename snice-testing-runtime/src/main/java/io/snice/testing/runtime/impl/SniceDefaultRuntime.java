@@ -109,8 +109,12 @@ public class SniceDefaultRuntime implements SniceRuntime {
             logger.info("No tasks were ever scheduled, shutting down system");
         }
 
-        // TODO: dont' remember why I need this one here.
-        hektor.terminate().whenComplete((aVoid, error) -> doneFuture.complete(null));
+        // Note: should shut down the protocols as well but there is a bug in Snice Networking
+        // that doesn't allow us to do so. See https://github.com/sniceio/snice-networking/issues/19
+        hektor.terminate().whenComplete((aVoid, error) -> {
+            doneFuture.complete(null);
+        });
+
     }
 
 
