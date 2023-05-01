@@ -1,5 +1,6 @@
 package io.snice.testing.runtime;
 
+import io.snice.testing.runtime.config.RuntimeConfig;
 import io.snice.testing.runtime.spi.SniceRuntimeProvider;
 
 public class FakeRuntimeProvider implements SniceRuntimeProvider {
@@ -11,7 +12,7 @@ public class FakeRuntimeProvider implements SniceRuntimeProvider {
     public static final FakeRuntime runtime = new FakeRuntime();
 
     @Override
-    public SniceRuntime create(final CliArgs args) {
+    public SniceRuntime create(final RuntimeConfig config) {
         return runtime;
     }
 }

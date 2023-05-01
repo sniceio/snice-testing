@@ -46,9 +46,9 @@ import static io.snice.preconditions.PreConditions.assertArrayNotEmpty;
 import static io.snice.preconditions.PreConditions.assertNotNull;
 import static java.util.stream.Collectors.toList;
 
-public class SniceLocalDevRuntime implements SniceRuntime {
+public class SniceDefaultRuntime implements SniceRuntime {
 
-    private static final Logger logger = LoggerFactory.getLogger(SniceLocalDevRuntime.class);
+    private static final Logger logger = LoggerFactory.getLogger(SniceDefaultRuntime.class);
 
     // TODO: make it configurable
     private static final int noOfScnSupervisors = 5;
@@ -64,7 +64,7 @@ public class SniceLocalDevRuntime implements SniceRuntime {
 
     private final CountDownLatch firstScenarioScheduledLatch = new CountDownLatch(1);
 
-    SniceLocalDevRuntime(final int waitTime, final Hektor hektor, final DockerSupport dockerSupport) {
+    public SniceDefaultRuntime(final int waitTime, final Hektor hektor, final DockerSupport dockerSupport) {
         this.waitTime = waitTime;
         this.hektor = hektor;
         this.dockerSupport = dockerSupport;
@@ -109,10 +109,12 @@ public class SniceLocalDevRuntime implements SniceRuntime {
             logger.info("No tasks were ever scheduled, shutting down system");
         }
 
-        // TODO: dont' remember why I need this one here.
-        sleep(1000);
-        // doneFuture.complete(null);
-        hektor.terminate().whenComplete((aVoid, error) -> doneFuture.complete(null));
+        // Note: should shut down the protocols as well but there is a bug in Snice Networking
+        // that doesn't allow us to do so. See https://github.com/sniceio/snice-networking/issues/19
+        hektor.terminate().whenComplete((aVoid, error) -> {
+            doneFuture.complete(null);
+        });
+
     }
 
 

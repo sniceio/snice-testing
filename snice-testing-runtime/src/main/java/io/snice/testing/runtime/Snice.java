@@ -6,18 +6,13 @@ import io.snice.testing.core.protocol.Protocol;
 import io.snice.testing.core.scenario.Scenario;
 import io.snice.testing.core.scenario.Simulation;
 import io.snice.testing.core.scenario.SimulationException;
-import io.snice.testing.runtime.impl.SniceLocalDevRuntimeProvider;
+import io.snice.testing.runtime.config.RuntimeConfig;
+import io.snice.testing.runtime.config.SimulationConfig;
 import io.snice.testing.runtime.spi.SniceRuntimeProvider;
-import net.sourceforge.argparse4j.ArgumentParsers;
-import net.sourceforge.argparse4j.inf.ArgumentParser;
-import net.sourceforge.argparse4j.inf.ArgumentParserException;
-import net.sourceforge.argparse4j.inf.Namespace;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.ServiceLoader;
@@ -31,8 +26,6 @@ import java.util.concurrent.ExecutionException;
  */
 public class Snice {
 
-    private static final String DEFAULT_RUNTIME_PROVIDER = SniceLocalDevRuntimeProvider.class.getName();
-
     private static final Logger logger = LoggerFactory.getLogger(Snice.class);
 
     private final SniceRuntime runtime;
@@ -45,43 +38,12 @@ public class Snice {
         return runtime;
     }
 
-    public CompletionStage<Void> sync() {
-        return runtime.sync();
-    }
-
-    public static final String ARG_RUNTIME = "runtime";
-    public static final String ARG_SIMULATION = "simulation";
-
-    /**
-     * When we start Snice, this is the amount of time we will wait for a simulation to
-     * be schedule and start running.
-     */
-    public static final String ARG_WAIT_FOR_SIMULATION = "wait";
-
-    private static ArgumentParser createArgParser() {
-        final var parser = ArgumentParsers.newFor("snice").build();
-        parser.addArgument("--" + ARG_RUNTIME)
-                .help("The fully-qualified class name of the runtime provider")
-                .setDefault(DEFAULT_RUNTIME_PROVIDER);
-
-        parser.addArgument("--" + ARG_WAIT_FOR_SIMULATION)
-                .help("The amount of time (in seconds) we will wait for a scenario to be scheduled, after which the container will shut down again")
-                .type(Integer.TYPE)
-                .setDefault(1);
-
-        parser.addArgument("--" + ARG_SIMULATION)
-                .help("The fully-qualified class name of the Simulation to run");
-
-        return parser;
-    }
-
-    private static CliArgs parseArgs(final String... args) {
+    public void sync() {
         try {
-            final var unknownArgs = new ArrayList<String>();
-            final var attrs = new HashMap<String, Object>();
-            createArgParser().parseKnownArgs(args, unknownArgs, attrs);
-            return new CliArgs(args, new Namespace(attrs), unknownArgs);
-        } catch (final ArgumentParserException e) {
+            runtime.sync().toCompletableFuture().get();
+        } catch (final InterruptedException e) {
+            throw new RuntimeException(e);
+        } catch (final ExecutionException e) {
             throw new RuntimeException(e);
         }
     }
@@ -127,10 +89,16 @@ public class Snice {
      *                                                     we'll bail out and the system will grind to a halt.
      */
     public static Snice start(final String... args) throws SimulationException.LoadSimulationException {
-        final var cli = parseArgs(args);
-        final var simulationMaybe = loadSimulation(cli);
+        final var cli = CliArgs.parseArgs(args);
+        final var runtimeConfig = cli.toRuntimeConfig();
+        final var simulationConfig = cli.toSimulationConfig();
+        return start(runtimeConfig, simulationConfig);
+    }
 
-        final var runtimeProviderClass = cli.namespace().get(ARG_RUNTIME);
+    public static Snice start(final RuntimeConfig runtimeConfig, final Optional<SimulationConfig> simulationConfig) throws SimulationException.LoadSimulationException {
+        final Optional<Simulation> simulationMaybe = loadSimulation(simulationConfig);
+
+        final var runtimeProviderClass = runtimeConfig.getRuntimeProvider();
         final var runtime = ServiceLoader.load(SniceRuntimeProvider.class)
                 .stream()
                 .map(ServiceLoader.Provider::get)
@@ -140,7 +108,7 @@ public class Snice {
                         "the supplied SniceRuntimeProvider of \"" + runtimeProviderClass + "\". " +
                         "Check your CLI argument --runtime to ensure you've specified the fully-qualified " +
                         "java class name of the provider"))
-                .create(cli);
+                .create(runtimeConfig);
 
         final var startFuture = runtime.start();
         try {
@@ -154,10 +122,11 @@ public class Snice {
         final var snice = new Snice(runtime);
         simulationMaybe.ifPresent(sim -> snice.runtime().run(sim));
         return snice;
+
     }
 
-    private static <T extends Simulation> Optional<T> loadSimulation(final CliArgs cli) throws SimulationException.LoadSimulationException {
-        return Optional.ofNullable(cli.namespace().getString(ARG_SIMULATION))
+    private static <T extends Simulation> Optional<T> loadSimulation(final Optional<SimulationConfig> config) throws SimulationException.LoadSimulationException {
+        return config.map(SimulationConfig::getSimulation)
                 .or(Snice::findSimulationAutomatically)
                 .map(Snice::loadSimulationClass);
     }
@@ -180,7 +149,7 @@ public class Snice {
 
     /**
      * Overly simplified but good enough for now. It tries to find the main class, assuming it is also
-     * a {@link Simulation}, which it currently doesn't check but that'll blow up in the {@link #loadSimulation(CliArgs)}
+     * a {@link Simulation}, which it currently doesn't check but that'll blow up in the {@link #loadSimulation(Optional)}
      * so the user would know.
      *
      * @return
@@ -198,7 +167,7 @@ public class Snice {
         return Optional.of(className);
     }
 
-    public static void main(final String... args) {
+    public static void main(final String... args) throws Exception {
         start(args).sync();
     }
 }
