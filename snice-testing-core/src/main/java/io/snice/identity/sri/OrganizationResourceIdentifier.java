@@ -14,6 +14,10 @@ public final class OrganizationResourceIdentifier extends SniceResourceIdentifie
         return from(PREFIX, sri, OrganizationResourceIdentifier::new);
     }
 
+    public static OrganizationResourceIdentifier fromString(final String sri) {
+        return from(sri);
+    }
+
     public static OrganizationResourceIdentifier of() {
         return new OrganizationResourceIdentifier(SniceResourceIdentifier.uuid());
     }

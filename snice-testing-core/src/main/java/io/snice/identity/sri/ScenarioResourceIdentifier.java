@@ -14,6 +14,10 @@ public final class ScenarioResourceIdentifier extends SniceResourceIdentifier.Ba
         return from(PREFIX, sri, ScenarioResourceIdentifier::new);
     }
 
+    public static ScenarioResourceIdentifier fromString(final String sri) {
+        return from(sri);
+    }
+
     public static ScenarioResourceIdentifier of() {
         return new ScenarioResourceIdentifier(SniceResourceIdentifier.uuid());
     }
