@@ -14,6 +14,10 @@ public final class AccountResourceIdentifier extends SniceResourceIdentifier.Bas
         return from(PREFIX, sri, AccountResourceIdentifier::new);
     }
 
+    public static AccountResourceIdentifier fromString(final String sri) {
+        return from(sri);
+    }
+
     public static AccountResourceIdentifier of() {
         return new AccountResourceIdentifier(SniceResourceIdentifier.uuid());
     }

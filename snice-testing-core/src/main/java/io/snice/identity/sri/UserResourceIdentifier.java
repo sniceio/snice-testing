@@ -14,6 +14,10 @@ public final class UserResourceIdentifier extends SniceResourceIdentifier.BaseRe
         return from(PREFIX, sri, UserResourceIdentifier::new);
     }
 
+    public static UserResourceIdentifier fromString(final String sri) {
+        return from(sri);
+    }
+
     public static UserResourceIdentifier of() {
         return new UserResourceIdentifier(SniceResourceIdentifier.uuid());
     }

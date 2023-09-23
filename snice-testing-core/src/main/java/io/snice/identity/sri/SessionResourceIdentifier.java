@@ -14,6 +14,10 @@ public final class SessionResourceIdentifier extends SniceResourceIdentifier.Bas
         return from(PREFIX, sri, SessionResourceIdentifier::new);
     }
 
+    public static SessionResourceIdentifier fromString(final String sri) {
+        return from(sri);
+    }
+
     public static SessionResourceIdentifier of() {
         return new SessionResourceIdentifier(SniceResourceIdentifier.uuid());
     }

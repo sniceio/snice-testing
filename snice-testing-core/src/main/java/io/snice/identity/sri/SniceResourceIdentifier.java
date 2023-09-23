@@ -36,6 +36,7 @@ public sealed interface SniceResourceIdentifier permits ActionResourceIdentifier
      */
     Buffer raw();
 
+
     default String asString() {
         return prefix() + raw().toHexString(false);
     }

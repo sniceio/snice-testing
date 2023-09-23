@@ -14,6 +14,10 @@ public final class RepositoryResourceIdentifier extends SniceResourceIdentifier.
         return from(PREFIX, sri, RepositoryResourceIdentifier::new);
     }
 
+    public static RepositoryResourceIdentifier fromString(final String sri) {
+        return from(sri);
+    }
+
     public static RepositoryResourceIdentifier of() {
         return new RepositoryResourceIdentifier(SniceResourceIdentifier.uuid());
     }

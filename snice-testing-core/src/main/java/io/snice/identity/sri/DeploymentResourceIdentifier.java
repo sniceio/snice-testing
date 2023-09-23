@@ -14,6 +14,10 @@ public final class DeploymentResourceIdentifier extends SniceResourceIdentifier.
         return from(PREFIX, sri, DeploymentResourceIdentifier::new);
     }
 
+    public static DeploymentResourceIdentifier fromString(final String sri) {
+        return from(sri);
+    }
+
     public static DeploymentResourceIdentifier of() {
         return new DeploymentResourceIdentifier(SniceResourceIdentifier.uuid());
     }
