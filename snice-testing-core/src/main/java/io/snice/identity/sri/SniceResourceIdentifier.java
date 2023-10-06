@@ -19,6 +19,7 @@ public sealed interface SniceResourceIdentifier permits ActionResourceIdentifier
         RepositoryResourceIdentifier,
         DeploymentResourceIdentifier,
         UserResourceIdentifier,
+        WorkspaceResourceIdentifier,
         OrganizationResourceIdentifier {
 
     /**
@@ -54,7 +55,8 @@ public sealed interface SniceResourceIdentifier permits ActionResourceIdentifier
 
     sealed class BaseResourceIdentifier permits ActionResourceIdentifier, RepositoryResourceIdentifier,
             UserResourceIdentifier, AccountResourceIdentifier, OrganizationResourceIdentifier, GenericResourceIdentifier,
-            DeploymentResourceIdentifier, ScenarioResourceIdentifier, SessionResourceIdentifier {
+            DeploymentResourceIdentifier, ScenarioResourceIdentifier, SessionResourceIdentifier,
+            WorkspaceResourceIdentifier {
 
         private final String prefix;
         private final Buffer uuid;
