@@ -15,7 +15,7 @@
     <name>Snice Testing</name>
     <groupId>io.snice</groupId>
     <artifactId>snice-testing-parent</artifactId>
-    <version>0.0.10-SNAPSHOT</version>
+    <version>0.0.10</version>
     <packaging>pom</packaging>
     <description>Snice Testing - Super Nice End-To-End Testing Framework for network protocols</description>
     <licenses>
@@ -38,7 +38,7 @@
         <connection>scm:git:git@github.com:sniceio/snice-testing.git</connection>
 	<developerConnection>scm:git:https://github.com/sniceio/snice-testing.git</developerConnection>
         <url>git@github.com:sniceio/snice-testing.git</url>
-        <tag>HEAD</tag>
+        <tag>snice-testing-release-0.0.10</tag>
     </scm>
 
     <properties>
